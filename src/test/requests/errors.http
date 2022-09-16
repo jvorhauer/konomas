@@ -1,0 +1,28 @@
+### register-born-error
+POST {{host}}/register
+
+{
+  "email": "error@vorhauer.nl",
+  "name": "Jurjen",
+  "password": "password",
+  "born": "1867-03-01"
+}
+
+### register-name-error
+POST {{host}}/register
+
+{
+  "email": "error@vorhauer.nl",
+  "name": "",
+  "password": "password",
+  "born": "1867-03-01"
+}
+
+### login-password-error
+POST {{host}}/login
+Content-Type: application/json
+
+{
+  "email": "jurjen@vorhauer.nl",
+  "password": "pissword"
+}

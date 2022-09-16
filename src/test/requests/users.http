@@ -1,0 +1,23 @@
+### register-jurjen
+POST {{host}}/register
+
+{
+  "email": "jurjen@vorhauer.nl",
+  "name": "Jurjen",
+  "password": "password",
+  "born": "1967-03-01"
+}
+
+### login-jurjen
+POST {{host}}/login
+
+{
+  "email": "jurjen@vorhauer.nl",
+  "password": "password"
+}
+
+> {% client.global.set("authorized", response.body.token); %}
+
+### Logout
+GET {{host}}/logout
+Authorization: {{authorized}}
