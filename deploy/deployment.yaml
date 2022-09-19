@@ -1,0 +1,84 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: noviblog
+  name: noviblog
+spec:
+  template:
+    metadata:
+      labels:
+        app: noviblog
+    spec:
+      containers:
+        - name: noviblog
+          image: ghcr.io/jvorhauer/noviblog:latest
+          resources:
+            limits:
+              cpu: "1"
+              memory: "512Mi"
+            requests:
+              cpu: 100m
+              memory: "256Mi"
+          livenessProbe:
+            failureThreshold: 5
+            httpGet:
+              port: 8080
+              path: /actuator/health/liveness
+              scheme: HTTP
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+          readinessProbe:
+            failureThreshold: 5
+            httpGet:
+              port: 8080
+              path: /actuator/health/readiness
+              scheme: HTTP
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          imagePullPolicy: Always
+          ports:
+            - name: noviblog
+              containerPort: 8080
+              protocol: TCP
+      imagePullSecrets:
+        - name: dockerregistry
+  selector:
+    matchLabels:
+      app: noviblog
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+  replicas: 2
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: noviblog
+  labels:
+    app: noviblog
+spec:
+  ports:
+  - port: 8080
+  type: LoadBalancer
+  selector:
+    app: noviblog
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: noviblog
+spec:
+  rules:
+    - http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: noviblog
+                port:
+                  name: http

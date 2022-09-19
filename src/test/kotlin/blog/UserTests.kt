@@ -1,21 +1,22 @@
 package blog
 
-import blog.UserWebTests.Companion.born
+import blog.Constants.email
+import blog.Constants.name
+import blog.Constants.password
 import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.AfterAll
+import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
-import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.autoconfigure.web.reactive.AutoConfigureWebTestClient
-import org.springframework.boot.test.context.SpringBootTest
-import org.springframework.http.HttpStatus
-import org.springframework.mock.web.reactive.function.server.MockServerRequest
+import org.springframework.boot.runApplication
+import org.springframework.context.ConfigurableApplicationContext
 import org.springframework.test.web.reactive.server.WebTestClient
 import org.springframework.test.web.reactive.server.body
 import org.valiktor.ConstraintViolationException
 import reactor.core.publisher.Mono
-import reactor.test.StepVerifier
 import java.time.LocalDate
-import java.time.Month
+
+// See https://www.callicoder.com/spring-5-reactive-webclient-webtestclient-examples/
 
 class UserTests {
     @Test
@@ -31,50 +32,37 @@ class UserTests {
     }
 }
 
-@SpringBootTest
-class UserRepoTests(@Autowired private val repo: UserRepo) {
-    @Test
-    fun `save and find`() {
-        val user = User(email = "repo@test.er", name = "Tester", password = "welkom123", born = born)
-        StepVerifier.create(repo.save(user)).expectNextCount(1).verifyComplete()
-        StepVerifier.create(repo.findById("repo@test.er")).expectNextCount(1).verifyComplete()
+class UserWebTests() {
+
+    private val client = WebTestClient.bindToServer()
+          .baseUrl("http://localhost:8181")
+          .build()
+
+    private lateinit var app: ConfigurableApplicationContext
+
+    @BeforeAll
+    fun before() {
+        app = runApplication<Application>() {
+            addInitializers(beans)
+        }
     }
-}
 
-@SpringBootTest
-class UserHandlerTests(@Autowired private val handler: UserHandler) {
-    @Test
-    fun `register and login`() {
-        val cu = CreateUser("handler@test.er", "Handler", "welkom123",  "1999-09-11")
-        val uc = UserCredentials("handler@test.er", "welkom123")
-
-        var req = MockServerRequest.builder().body(Mono.just(cu))
-        StepVerifier.create(handler.register(req)).expectNextCount(1).verifyComplete()
-
-        req = MockServerRequest.builder().body(Mono.just(uc))
-        StepVerifier.create(handler.login(req)).expectNextCount(1).verifyComplete()
-        StepVerifier.create(handler.login(req)).assertNext {
-            assertThat(it.statusCode()).isEqualTo(HttpStatus.OK)
-        }.verifyComplete()
+    @AfterAll
+    fun after() {
+        app.close()
     }
-}
-
-
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@AutoConfigureWebTestClient
-class UserWebTests(@Autowired private val client: WebTestClient) {
 
     @Test
     internal fun `register, login, get and logout`() {
         val cu = CreateUser(email, name,  password, "1999-09-01")
         client.post()
-              .uri("/register")
+              .uri("/api/register")
               .body(Mono.just(cu))
               .exchange()
               .expectStatus().isOk
 
         val response = client.post()
-              .uri("/login")
+              .uri("/api/login")
               .body(Mono.just(UserCredentials(email, password)))
               .exchange()
               .expectStatus().isOk
@@ -87,12 +75,12 @@ class UserWebTests(@Autowired private val client: WebTestClient) {
         val token = userToken?.token ?: "prut"
 
         client.get()
-              .uri("/users")
+              .uri("/api/users")
               .exchange()
               .expectStatus().isOk
 
         client.get()
-              .uri("/logout")
+              .uri("/api/logout")
               .header("Authorization", token)
               .exchange()
               .expectStatus().isNoContent
@@ -101,7 +89,7 @@ class UserWebTests(@Autowired private val client: WebTestClient) {
     @Test
     fun `register with plain json`() {
         client.post()
-              .uri("/register")
+              .uri("/api/register")
               .bodyValue(
                   """{"email":"ab@cd.ef","name":"ab","password":"password","born":"2001-09-11"}"""
               )
@@ -113,19 +101,20 @@ class UserWebTests(@Autowired private val client: WebTestClient) {
     @Test
     fun `find one with existing id`() {
         client.get()
-              .uri("/user/$email")
+              .uri("/api/user/$email")
               .exchange()
               .expectStatus().isOk
+              .expectBody(UserResponse::class.java)
     }
 
     @Test
     fun `find no one without passing id`() {
         client.get()
-              .uri("/user")
+              .uri("/api/user")
               .exchange()
               .expectStatus().isNotFound            // this path does not exist, so 404 is correct
         client.get()
-              .uri("/user/")
+              .uri("/api/user/")
               .exchange()
               .expectStatus().isNotFound            // this path does not exist, so 404 is correct
     }
@@ -133,15 +122,8 @@ class UserWebTests(@Autowired private val client: WebTestClient) {
     @Test
     fun `find no one with non-email id`() {
         client.get()
-              .uri("/user/xyz")
+              .uri("/api/user/xyz")
               .exchange()
               .expectStatus().isBadRequest
-    }
-
-    companion object {
-        const val email = "web@test.er"
-        const val password = "welkom123"
-        const val name = "Web Tester"
-        val  born: LocalDate = LocalDate.of(1999, Month.SEPTEMBER, 1)
     }
 }

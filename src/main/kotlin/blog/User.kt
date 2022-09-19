@@ -1,16 +1,12 @@
 package blog
 
 import org.owasp.encoder.Encode
-import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.data.cassandra.core.InsertOptions
 import org.springframework.data.cassandra.core.ReactiveCassandraOperations
 import org.springframework.data.cassandra.core.mapping.PrimaryKey
 import org.springframework.data.cassandra.core.mapping.Table
-import org.springframework.data.cassandra.repository.ReactiveCassandraRepository
+import org.springframework.data.cassandra.core.query.Query
 import org.springframework.http.HttpStatus
-import org.springframework.stereotype.Component
-import org.springframework.stereotype.Repository
-import org.springframework.stereotype.Service
 import org.springframework.web.reactive.function.server.ServerRequest
 import org.springframework.web.reactive.function.server.ServerResponse
 import org.springframework.web.reactive.function.server.ServerResponse.badRequest
@@ -19,6 +15,7 @@ import org.valiktor.functions.doesNotContain
 import org.valiktor.functions.isEmail
 import org.valiktor.functions.isNotBlank
 import org.valiktor.validate
+import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import reactor.util.function.Tuple2
 import java.nio.charset.StandardCharsets
@@ -48,7 +45,7 @@ data class User(
 val LDF: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
 
 
-internal data class CreateUser(
+data class CreateUser(
     val email: String,
     val name: String,
     val password: String,
@@ -63,8 +60,9 @@ internal data class CreateUser(
             validate(CreateUser::born).isNotBlank().isLocalDate()
         }
     }
+
     fun toUser(): User = User(
-        email, name, born = LocalDate.parse(born, LDF) , password = hash(password)
+        email, name, born = LocalDate.parse(born, LDF), password = hash(password)
     )
 }
 
@@ -74,6 +72,13 @@ data class UserResponse(
     val joined: String,
     val posts: List<PostResponse>
 )
+
+class UserRepo(private val ops: ReactiveCassandraOperations) {
+    fun findById(id: String): Mono<User> = ops.selectOneById(id, userC)
+    fun save(u: User): Mono<User> = ops.insert(u)
+    fun findAll(): Flux<User> = ops.select(Query.empty(), userC)
+}
+
 
 @Table("tokens")
 data class Token(
@@ -88,28 +93,20 @@ internal data class UserCredentials(
     val password: String
 )
 
+private val userC = User::class.java
 
-@Repository
-interface UserRepo: ReactiveCassandraRepository<User, String>
-
-interface TimedSave<T> {
-    fun save(t: T, ttl: Int): Mono<T>
-}
-
-@Repository
-interface TokenRepo: ReactiveCassandraRepository<Token, String>, TimedSave<Token>
-
-@Component
-class TimedSaveImpl(@Autowired private val ops: ReactiveCassandraOperations): TimedSave<Token> {
-    override fun save(t: Token, ttl: Int): Mono<Token> = ops.insert<Token>(t, ttl(ttl)).map { it.entity }
+class TokenRepo(private val ops: ReactiveCassandraOperations) {
+    fun findById(id: String): Mono<Token> = ops.selectOneById(id, Token::class.java)
+    fun save(t: Token, ttl: Int): Mono<Token> = ops.insert<Token>(t, ttl(ttl)).map { it.entity }
+    fun deleteById(id: String): Mono<Boolean> = ops.deleteById(id, Token::class.java)
 
     private fun ttl(i: Int): InsertOptions = InsertOptions.builder().ttl(i).build()
 }
 
-@Service
+
 class UserHandler(
-    @Autowired private val userRepo: UserRepo,
-    @Autowired private val tokenRepo: TokenRepo
+    private val userRepo: UserRepo,
+    private val tokenRepo: TokenRepo
 ) {
     fun register(req: ServerRequest): Mono<ServerResponse> = req
           .bodyToMono(CreateUser::class.java)
@@ -120,8 +117,9 @@ class UserHandler(
 
     fun login(req: ServerRequest): Mono<ServerResponse> = req
           .bodyToMono(UserCredentials::class.java)
-          .flatMap { userRepo.findById(it.email)
-                .filter { res -> hash(it.password) == res.password }
+          .flatMap {
+              userRepo.findById(it.email)
+                    .filter { res -> hash(it.password) == res.password }
           }
           .flatMap {
               tokenRepo.save(Token(hash(UUID.randomUUID().toString()), Encode.forHtml(it.email)), 3600)
@@ -139,8 +137,8 @@ class UserHandler(
     fun logout(req: ServerRequest): Mono<ServerResponse> =
         authenticate(req)
               .flatMap { tokenRepo.deleteById(it.t1.email) }
-              .flatMap { ServerResponse.status(HttpStatus.NOT_FOUND).build() }
-              .switchIfEmpty(ServerResponse.status(HttpStatus.NO_CONTENT).build())
+              .flatMap { ServerResponse.status(HttpStatus.NO_CONTENT).build() }
+              .switchIfEmpty(ServerResponse.status(HttpStatus.NOT_FOUND).build())
 
 
     fun all(req: ServerRequest): Mono<ServerResponse> =

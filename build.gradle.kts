@@ -5,11 +5,12 @@ plugins {
     id("io.spring.dependency-management") version "1.0.13.RELEASE"
     kotlin("jvm") version "1.7.10"
     kotlin("plugin.spring") version "1.6.21"
+    id("com.google.cloud.tools.jib") version "3.3.0"
 }
 
 group = "nl.vorhauer"
 version = "0.0.1-SNAPSHOT"
-java.sourceCompatibility = JavaVersion.VERSION_17
+java.sourceCompatibility = JavaVersion.VERSION_11
 
 repositories {
     mavenLocal()
@@ -45,10 +46,34 @@ dependencies {
 tasks.withType<KotlinCompile> {
     kotlinOptions {
         freeCompilerArgs = listOf("-Xjsr305=strict")
-        jvmTarget = "17"
+        jvmTarget = "11"
     }
 }
 
 tasks.withType<Test> {
     useJUnitPlatform()
+}
+
+jib {
+    from {
+        image = "openjdk:11"
+    }
+    to {
+        image = "ghcr.io/jvorhauer/noviblog:latest"
+        auth {
+            username = System.getenv("GITHUB_USER")
+            password = System.getenv("GITHUB_TOKEN")
+        }
+    }
+    container {
+        jvmFlags = listOf("-Xms512m", "-Xmx512m")
+        mainClass = "blog.Application"
+        ports = listOf("8080/tcp")
+
+    }
+    setAllowInsecureRegistries(true)
+}
+
+tasks.named("jib") {
+    dependsOn("test")
 }
