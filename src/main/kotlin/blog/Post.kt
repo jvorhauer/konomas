@@ -6,14 +6,19 @@ import org.springframework.context.ApplicationListener
 import org.springframework.data.cassandra.core.ReactiveCassandraOperations
 import org.springframework.data.cassandra.core.mapping.CassandraType
 import org.springframework.data.cassandra.core.mapping.CassandraType.Name.*
+import org.springframework.data.cassandra.core.mapping.Indexed
 import org.springframework.data.cassandra.core.mapping.PrimaryKey
 import org.springframework.data.cassandra.core.mapping.Table
+import org.springframework.data.cassandra.core.query.Criteria
+import org.springframework.data.cassandra.core.query.Query
+import org.springframework.data.domain.Pageable
 import org.springframework.web.reactive.function.server.ServerRequest
 import org.springframework.web.reactive.function.server.ServerResponse
 import org.springframework.web.reactive.function.server.ServerResponse.ok
 import org.valiktor.functions.hasSize
 import org.valiktor.functions.isNotBlank
 import org.valiktor.validate
+import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import java.time.LocalDateTime
 import java.util.UUID
@@ -26,6 +31,7 @@ data class Post(
     val title: String,
     val body: String,
     val written: LocalDateTime = LocalDateTime.now(),
+    @Indexed
     val author: String,
     val viewed: Int = 0
 ) {
@@ -71,6 +77,13 @@ data class PostResponse(
 class PostRepo(private val ops: ReactiveCassandraOperations) {
     fun save(p: Post): Mono<Post> = ops.insert(p)
     fun findById(id: UUID): Mono<Post> = ops.selectOneById(id, Post.klass)
+    fun paged(author: String, page: Int = 0, size: Int = 20): Flux<Post> =
+        ops.select(
+            Query.query(Criteria.where("author").`is`(author))
+                  .pageRequest(Pageable.ofSize(size).withPage(page))
+                  .withAllowFiltering(),
+            Post.klass
+        )
 }
 
 class PostHandler(
@@ -102,11 +115,19 @@ class PostHandler(
               }
               .flatMap { ok().body(Mono.just(it), PostResponse.klass) }
 
+    fun paged(req: ServerRequest): Mono<ServerResponse> {
+        val flux = req.monoPathVar("id")
+              .flatMapMany { id -> repo.paged(id) }
+              .flatMap { post ->
+                  users.findById(post.author).map { u -> post.toResponse(u.toResponse()) }
+              }
+        return ok().body(flux, PostResponse.klass)
+    }
 }
 
 class NoteEventListener(private val repo: PostRepo) : ApplicationListener<PostViewedEvent> {
     override fun onApplicationEvent(event: PostViewedEvent) {
         val post = event.post
-        repo.save(post.copy(viewed = post.viewed.plus(1))).subscribe { println("note ${post.id} viewed") }
+        repo.save(post.copy(viewed = post.viewed.plus(1))).subscribe()
     }
 }

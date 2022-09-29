@@ -1,0 +1,21 @@
+@startuml
+'https://plantuml.com/activity-diagram-beta
+
+start
+:Received Command;
+:Validate Command;
+if (valid) then (yes)
+    :Check with Current State;
+    if (applicable) then (yes)
+        :Create Event(s);
+        :Persist Event(s);
+        :Publish Event(s) = broadcast;
+    else
+        end
+    endif
+else
+    end
+endif
+stop
+
+@enduml

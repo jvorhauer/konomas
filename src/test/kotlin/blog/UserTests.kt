@@ -48,9 +48,7 @@ class UserWebTests() {
     }
 
     @AfterAll
-    fun after() {
-        app.close()
-    }
+    fun after() = app.close()
 
     @Test
     internal fun `register, login, get and logout`() {

@@ -86,7 +86,11 @@ data class Token(
     val token: String,
     val email: String,
     val created: LocalDateTime = ZonedDateTime.now(ZoneId.of("CET")).toLocalDateTime()
-)
+) {
+    companion object {
+        val klass = Token::class.java
+    }
+}
 
 internal data class UserCredentials(
     val email: String,

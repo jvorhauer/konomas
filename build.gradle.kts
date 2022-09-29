@@ -9,7 +9,7 @@ plugins {
 }
 
 group = "nl.vorhauer"
-version = "0.0.1-SNAPSHOT"
+version = "1.0.0-SNAPSHOT"
 java.sourceCompatibility = JavaVersion.VERSION_11
 
 repositories {
@@ -30,8 +30,13 @@ dependencies {
     implementation("org.jetbrains.kotlin:kotlin-reflect")
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-reactor")
+    implementation("com.typesafe.akka:akka-persistence_2.13:2.6.20")
+    implementation("com.typesafe.akka:akka-persistence-query_2.13:2.6.20")
+    implementation("com.typesafe.akka:akka-cluster-tools_2.13:2.6.20")
+    implementation("com.typesafe.akka:akka-persistence-cassandra_2.13:1.0.6")
 
     runtimeOnly("io.micrometer:micrometer-registry-datadog")
+    implementation("io.netty:netty-all:4.1.79.Final")
     implementation("org.valiktor:valiktor-spring-boot-starter:0.12.0")
     implementation("org.valiktor:valiktor-core:0.12.0")
     implementation("org.valiktor:valiktor-javatime:0.12.0")
@@ -41,6 +46,7 @@ dependencies {
 
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("io.projectreactor:reactor-test")
+    testImplementation("com.typesafe.akka:akka-persistence-testkit_2.13:2.6.20")
 }
 
 tasks.withType<KotlinCompile> {
