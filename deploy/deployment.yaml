@@ -35,7 +35,7 @@ spec:
               port: 8080
               path: /actuator/health/readiness
               scheme: HTTP
-            initialDelaySeconds: 10
+            initialDelaySeconds: 60
             periodSeconds: 5
           imagePullPolicy: Always
           ports:

@@ -1,5 +1,6 @@
 ### register-jurjen
-POST {{host}}/register
+POST {{host}}/api/user
+Content-Type: application/json
 
 {
   "email": "jurjen@vorhauer.nl",
@@ -8,16 +9,40 @@ POST {{host}}/register
   "born": "1967-03-01"
 }
 
-### login-jurjen
-POST {{host}}/login
+### register-frodo
+POST {{host}}/api/user
+Content-Type: application/json
 
 {
-  "email": "jurjen@vorhauer.nl",
-  "password": "password"
+  "email":"frodo@baggins.me","name":"Frodo","password":"password","born":"2016-09-15"
 }
 
-> {% client.global.set("authorized", response.body.token); %}
+### register-random
+POST {{host}}/api/user
+Content-Type: application/json
 
-### Logout
-GET {{host}}/logout
-Authorization: {{authorized}}
+{
+  "email": "{{$random.email}}",
+  "name": "{{$random.alphabetic(13)}}",
+  "password": "{{$random.alphanumeric(11)}}",
+  "born": "{{$random.integer(1900,2010)}}-0{{$random.integer(0,10)}}-{{$random.integer(10,28)}}"
+}
+
+### get-all-users
+GET {{host}}/api/users
+
+### get-by-id
+GET {{host}}/api/user/id/f702e417-c0f1-45ca-814c-e346304f0a95
+
+### get-by-email
+GET {{host}}/api/user/email/jurjen@vorhauer.nl
+
+### post-new-note
+POST {{host}}/api/note/70ac8181-a29c-46e1-b488-93bcddad2c53
+Content-Type: application/json
+
+{
+  "user": "70ac8181-a29c-46e1-b488-93bcddad2c53",
+  "title": "My first Note",
+  "body": "Note taking in its simplest form :-)"
+}

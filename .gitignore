@@ -36,3 +36,8 @@ http-client.private.env.json
 
 ### VS Code ###
 .vscode/
+
+
+### Akka Persistence
+storage/
+snapshots/
