@@ -6,10 +6,11 @@ plugins {
   kotlin("jvm") version "1.7.21"
   kotlin("plugin.spring") version "1.6.21"
   id("com.google.cloud.tools.jib") version "3.3.1"
+  id("net.researchgate.release") version "3.0.2"
 }
 
 group = "nl.vorhauer"
-version = "1.0.0-SNAPSHOT"
+version = "1.0.0"
 java.sourceCompatibility = JavaVersion.VERSION_11
 
 repositories {
@@ -70,6 +71,7 @@ jib {
   }
   to {
     image = "ghcr.io/jvorhauer/noviblog:latest"
+    tags = mutableSetOf("$version")
     auth {
       username = System.getenv("GITHUB_USER")
       password = System.getenv("GITHUB_TOKEN")
