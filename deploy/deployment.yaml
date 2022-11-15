@@ -29,7 +29,7 @@ spec:
               cpu: "1"
               memory: "1024Mi"
             requests:
-              cpu: 100m
+              cpu: 500m
               memory: "512Mi"
           livenessProbe:
             failureThreshold: 5
@@ -73,7 +73,7 @@ metadata:
     app: noviblog
 spec:
   ports:
-  - port: 8080
+    - port: 8080
   type: LoadBalancer
   selector:
     app: noviblog
