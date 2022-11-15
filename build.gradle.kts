@@ -24,8 +24,8 @@ dependencies {
 
   implementation("org.springframework.boot:spring-boot-starter-webflux")
   implementation("org.springframework.boot:spring-boot-starter-actuator")
-  implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
-  implementation("io.projectreactor.kotlin:reactor-kotlin-extensions")
+  implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.14.0")
+  implementation("io.projectreactor.kotlin:reactor-kotlin-extensions:1.2.0")
   implementation("org.jetbrains.kotlin:kotlin-reflect")
   implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
   implementation("org.jetbrains.kotlinx:kotlinx-coroutines-reactor")
@@ -37,8 +37,6 @@ dependencies {
   implementation("com.typesafe.akka:akka-cluster-typed_2.13")
   implementation("org.scala-lang:scala-library:2.13.10")
 
-  implementation("org.jgrapht:jgrapht-core:1.5.1")
-
   implementation("io.netty:netty-all:4.1.85.Final")
   implementation("org.valiktor:valiktor-spring-boot-starter:0.12.0")
   implementation("org.valiktor:valiktor-core:0.12.0")
@@ -48,7 +46,7 @@ dependencies {
   implementation("org.slf4j:slf4j-simple:2.0.3")
 
   testImplementation("org.springframework.boot:spring-boot-starter-test")
-  testImplementation("io.projectreactor:reactor-test")
+  testImplementation("io.projectreactor:reactor-test:3.5.0")
   testImplementation("com.typesafe.akka:akka-persistence-testkit_2.13:2.7.0")
   testImplementation("junit:junit:4.13.2")
 }

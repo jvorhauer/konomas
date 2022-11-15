@@ -1,6 +1,7 @@
 package blog
 
 import akka.actor.testkit.typed.javadsl.TestKitJunitResource
+import blog.model.NoteResponse
 import blog.model.UserResponse
 import blog.model.UserState
 import blog.write.UserBehavior
@@ -54,9 +55,28 @@ class ApiTests {
     assertThat(user).isNotNull
     client.get("/api/users").exchange().expectStatus().isOk.expectBodyList(UserResponse::class.java).hasSize(1)
 
-    client.post("/api/note/${user?.id}")
-      .bodyValue("""{"user":"${user?.id}","title":"Titel","body":"Body tekst"}""")
+    val session = client.post("/api/login")
+      .bodyValue("""{"username":"test@test.er","password":"welkom123"}""")
       .exchange()
       .expectStatus().isOk
+      .expectBody(String::class.java)
+      .returnResult().responseBody
+
+    client.post("/api/login")
+      .bodyValue("""{"username":"test@test.er","password":"welkom124"}""")
+      .exchange()
+      .expectStatus().isForbidden
+
+    val note = client.post("/api/note/${user?.id}")
+      .header("X-Auth", session)
+      .bodyValue("""{"user":"${user?.id}","title":"Titel","body":"Body tekst"}""")
+      .exchange()
+      .expectStatus().isCreated
+      .expectBody(NoteResponse::class.java)
+      .returnResult().responseBody
+
+    println("note: $note")
+
+    client.get("/api/note/${note?.id}").exchange().expectStatus().isOk
   }
 }

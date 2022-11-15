@@ -41,15 +41,16 @@ class UserBehavior(private val state: UserState, pid: PersistenceId) : EventSour
     if (state.exists(cmd.email)) Effect().none().thenRun {
       cmd.replyTo.tell(StatusReply.error("${cmd.email} already registered"))
     }
-    else Effect().persist(cmd.toEvent()).thenRun { s: UserState ->
-      s.find(cmd.email)?.apply {
+    else {
+      val event = cmd.toEvent()
+      Effect().persist(event).thenRun { _: UserState ->
         // distributed pub sub action to inform the other nodes, but do not send to self (if this is at all possible)
         // see https://doc.akka.io/docs/akka/current/typed/distributed-data.html#using-the-replicator, but: create child beahvior
         // and make that child publish the registration fact.
         //          if (s.recovered) {
         //          }
         logger.info("onRegisterUser: ${cmd.email} persisted")
-        cmd.replyTo.tell(StatusReply.success(this.toResponse()))
+        cmd.replyTo.tell(StatusReply.success(event.toEntity().toResponse()))
       }
     }
 
@@ -57,9 +58,10 @@ class UserBehavior(private val state: UserState, pid: PersistenceId) : EventSour
     if (state.notExists(cmd.user)) Effect().none().thenRun {
       cmd.replyTo.tell(StatusReply.error("User ${cmd.user} not found"))
     }
-    else Effect().persist(cmd.toEvent()).thenRun { us: UserState ->
-      us.find(cmd.user)?.apply {
-        cmd.replyTo.tell(StatusReply.success(this.toResponse()))
+    else {
+      val event = cmd.toEvent()
+      Effect().persist(event).thenRun { _: UserState ->
+        cmd.replyTo.tell(StatusReply.success(event.toEntity().toResponse()))
       }
     }
 

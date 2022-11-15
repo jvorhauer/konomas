@@ -14,6 +14,7 @@ import org.valiktor.functions.isNotBlank
 import org.valiktor.validate
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
+import java.time.Duration
 import java.time.LocalDate
 import java.util.Locale
 import java.util.UUID
@@ -37,6 +38,24 @@ data class RegisterUserRequest(
 
   fun toCommand(replyTo: ReplyTo): RegisterUser = RegisterUser(this, replyTo)
 }
+
+data class LoginRequest(
+  val username: String,
+  val password: String
+) {
+  init {
+    validate(this) {
+      validate(LoginRequest::username).isEmail()
+      validate(LoginRequest::password).isNotBlank().hasSize(min = 7, max = 1024)
+    }
+  }
+}
+
+data class UserSession(
+  val id: String,
+  val user: User,
+  val started: Long = System.currentTimeMillis()
+)
 
 data class RegisterUser(
   val id: UUID = UUID.randomUUID(),
@@ -100,18 +119,40 @@ data class UserResponse(
 
 
 data class UserState(private val users: MutableMap<UUID, User> = ConcurrentHashMap(), var recovered: Boolean = false) {
+  private val sessions: MutableMap<String, UserSession> = mutableMapOf()
+  private val notes: MutableMap<UUID, Note> = mutableMapOf()
+  private val timeout = Duration.ofHours(4).toMillis()
+
   fun save(u: User): UserState = users.put(u.id, u).let { this }
   fun find(a: Any): User? = when (a) {
     is UUID -> users[a]
     is String -> users.values.find { it.email == a }
     else -> null
   }
-  fun notExists(id: UUID): Boolean = !exists(id)
+
+  fun login(username: String, password: String): String? {
+    val user = find(username)
+    return if (user != null && user.password == RegisterUser.hash(password)) {
+      val sessionId = UUID.randomUUID().toString()
+      sessions[sessionId] = UserSession(sessionId, user)
+      sessionId
+    } else {
+      null
+    }
+  }
+
+  fun loggedin(session: String): Boolean = (sessions[session]?.started ?: 0L) > (System.currentTimeMillis() - timeout)
+
   fun exists(a: Any): Boolean = find(a) != null
+  fun notExists(id: UUID): Boolean = !exists(id)
   fun findAll(): List<User> = users.values.toList()
   fun wipe() = users.clear()
 
-  fun addNote(note: Note): UserState = find(note.user).apply { this?.notes?.add(note) }.let { this }
+  fun addNote(note: Note): UserState = find(note.user)
+    .apply { this?.notes?.add(note) }
+    .also { if (it != null ) notes[note.id] = note }
+    .let { this }
+  fun findNote(id: UUID): Note? = notes[id]
 }
 
 

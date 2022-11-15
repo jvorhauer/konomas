@@ -56,7 +56,7 @@ data class Note(
   val title: String,
   val body: String
 ): Entity {
-  fun toResponse() = NoteResponse(user, id, created, title, body)
+  fun toResponse() = NoteResponse(id, user, created, title, body)
 }
 
 data class NoteResponse(
