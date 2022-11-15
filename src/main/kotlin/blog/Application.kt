@@ -7,6 +7,9 @@ import akka.actor.typed.PostStop
 import akka.actor.typed.javadsl.AskPattern.ask
 import akka.actor.typed.javadsl.BehaviorBuilder
 import akka.actor.typed.javadsl.Behaviors
+import akka.cluster.typed.Cluster
+import akka.cluster.typed.Join
+import akka.cluster.typed.Leave
 import blog.model.CreateNoteRequest
 import blog.model.RegisterUserRequest
 import blog.model.UserResponse
@@ -25,6 +28,7 @@ import reactor.core.publisher.Mono.fromFuture
 import java.net.URI
 import java.time.Duration
 import java.util.UUID
+import javax.annotation.PreDestroy
 
 @SpringBootApplication
 class Application
@@ -60,10 +64,24 @@ object Server {
 }
 
 fun beans(processor: ActorRef<Command>, sys: ActorSystem<Void>, state: UserState) = beans {
+  bean { Cluster.get(sys) }
+  bean { joiner(ref()) }
+  bean<Leaver>()
   bean<ValidationExceptionHandler>()
   bean { UserReader(state) }
   bean<UserHandler>()
   bean { routes(processor, sys, ref()) }
+}
+
+fun joiner(cluster: Cluster) {
+  cluster.manager().tell(Join.create(cluster.selfMember().address()))
+}
+
+class Leaver(private val cluster: Cluster) {
+  @PreDestroy
+  fun leave() {
+    cluster.manager().tell(Leave.create(cluster.selfMember().address()))
+  }
 }
 
 private val timeout = Duration.ofSeconds(1)

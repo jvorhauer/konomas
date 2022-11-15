@@ -5,7 +5,7 @@ plugins {
   id("io.spring.dependency-management") version "1.0.13.RELEASE"
   kotlin("jvm") version "1.7.21"
   kotlin("plugin.spring") version "1.6.21"
-  id("com.google.cloud.tools.jib") version "3.3.0"
+  id("com.google.cloud.tools.jib") version "3.3.1"
 }
 
 group = "nl.vorhauer"
@@ -32,6 +32,8 @@ dependencies {
   implementation("com.typesafe.akka:akka-serialization-jackson_2.13")
   implementation("com.typesafe.akka:akka-persistence-typed_2.13")
   implementation("com.typesafe.akka:akka-persistence-cassandra_2.13:1.1.0")
+  implementation("com.typesafe.akka:akka-persistence-query_2.13")
+  implementation("com.typesafe.akka:akka-cluster-typed_2.13")
   implementation("org.scala-lang:scala-library:2.13.10")
 
   implementation("org.jgrapht:jgrapht-core:1.5.1")
@@ -77,7 +79,6 @@ jib {
     jvmFlags = listOf("-Xms512m", "-Xmx1024m")
     mainClass = "blog.ApplicationKt"
     ports = listOf("8080/tcp")
-
   }
   setAllowInsecureRegistries(true)
 }

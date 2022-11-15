@@ -13,17 +13,13 @@ import org.springframework.context.ConfigurableApplicationContext
 import org.springframework.test.web.reactive.server.WebTestClient
 import java.util.UUID
 
-fun WebTestClient.get(uri: String): WebTestClient.RequestHeadersSpec<*> = this.get().uri(uri)
-fun WebTestClient.post(uri: String) = this.post().uri(uri)
-
 class ApiTests {
-
   private val testKit = TestKitJunitResource(
-    """akka.persistence.journal.plugin = "akka.persistence.journal.inmem" 
+    """akka.actor.provider = "cluster"
+       akka.persistence.journal.plugin = "akka.persistence.journal.inmem" 
        akka.persistence.snapshot-store.plugin = "akka.persistence.snapshot-store.local"  
        akka.persistence.snapshot-store.local.dir = "build/snapshot-${UUID.randomUUID()}"  
-    """
-  )
+    """)
 
   private var app: ConfigurableApplicationContext? = null
   private val client = WebTestClient.bindToServer()

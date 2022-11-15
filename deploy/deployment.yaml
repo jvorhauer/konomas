@@ -13,13 +13,24 @@ spec:
       containers:
         - name: noviblog
           image: ghcr.io/jvorhauer/noviblog:latest
+          env:
+            - name: ASTRA_USERNAME
+              valueFrom:
+                configMapKeyRef:
+                  name: astra-config
+                  key: ASTRA_USERNAME
+            - name: ASTRA_PASSWORD
+              valueFrom:
+                configMapKeyRef:
+                  name: astra-config
+                  key: ASTRA_PASSWORD
           resources:
             limits:
               cpu: "1"
-              memory: "512Mi"
+              memory: "1024Mi"
             requests:
               cpu: 100m
-              memory: "256Mi"
+              memory: "512Mi"
           livenessProbe:
             failureThreshold: 5
             httpGet:
@@ -35,7 +46,7 @@ spec:
               port: 8080
               path: /actuator/health/readiness
               scheme: HTTP
-            initialDelaySeconds: 60
+            initialDelaySeconds: 10
             periodSeconds: 5
           imagePullPolicy: Always
           ports:
@@ -52,7 +63,7 @@ spec:
     rollingUpdate:
       maxSurge: 1
       maxUnavailable: 1
-  replicas: 2
+  replicas: 1
 ---
 apiVersion: v1
 kind: Service
