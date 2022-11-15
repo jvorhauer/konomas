@@ -1,119 +1,152 @@
 package blog
 
-import akka.actor.AbstractActor
-import akka.actor.ActorRef
-import akka.actor.ActorSystem
-import akka.actor.Props
-import akka.pattern.Patterns.ask
-import evented.ExampleActor
-import evented.ExampleEventListener
-import evented.ExampleHandler
+import akka.actor.typed.ActorRef
+import akka.actor.typed.ActorSystem
+import akka.actor.typed.Behavior
+import akka.actor.typed.PostStop
+import akka.actor.typed.javadsl.AskPattern.ask
+import akka.actor.typed.javadsl.BehaviorBuilder
+import akka.actor.typed.javadsl.Behaviors
+import akka.cluster.typed.Cluster
+import akka.cluster.typed.Join
+import akka.cluster.typed.Leave
+import blog.model.CreateNoteRequest
+import blog.model.RegisterUserRequest
+import blog.model.UserResponse
+import blog.model.UserState
+import blog.write.UserBehavior
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
+import org.springframework.context.ConfigurableApplicationContext
 import org.springframework.context.support.beans
-import org.springframework.http.HttpStatus
-import org.springframework.web.reactive.function.BodyInserters
+import org.springframework.web.reactive.function.server.RouterFunction
 import org.springframework.web.reactive.function.server.ServerRequest
 import org.springframework.web.reactive.function.server.ServerResponse
 import org.springframework.web.reactive.function.server.router
 import reactor.core.publisher.Mono
+import reactor.core.publisher.Mono.fromFuture
+import java.net.URI
 import java.time.Duration
+import java.util.UUID
+import javax.annotation.PreDestroy
 
 @SpringBootApplication
 class Application
 
 fun main() {
-    runApplication<Application> {
-        addInitializers(beans)
-    }
+  ActorSystem.create(Server.create(UserState()), "system")
 }
 
-val beans = beans {
-    bean { ActorSystem.create("as-novi") }
-    bean<UserRepo>()
-    bean<TokenRepo>()
-    bean<PostRepo>()
-    bean<UserHandler>()
-    bean<PostHandler>()
-    bean<NoteEventListener>()
-    bean { TheActorHandler(TheActor.create(ref(), "ze-big-boss")) }
-    bean { ExampleHandler(ExampleActor.create(ref(), "persistor")) }
-    bean { ExampleEventListener.create(ref(), "listener") }
-    bean { routes(ref(), ref(), ref(), ref()) }
-}
+sealed interface Message
+data class Started(val cfg: ConfigurableApplicationContext) : Message
+object Shutdown : Message
 
-// Actually two routers: write and read side.
-
-fun routes(
-    userHandler: UserHandler,
-    postHandler: PostHandler,
-    theActorHandler: TheActorHandler,
-    exampler: ExampleHandler
-) =
-    router {
-        "/api".nest {
-            POST("/register", userHandler::register)
-            POST("/login", userHandler::login)
-            GET("/users", userHandler::all)
-            GET("/logout", userHandler::logout)
-            GET("/user/{id}", userHandler::one)
-
-            POST("/blogs", postHandler::save)
-            GET("/blog/{id}", postHandler::one)
-            GET("/blogs/{id}", postHandler::paged)
-
-            GET("/act/{text}") {
-                ok().body(BodyInserters.fromPublisher(theActorHandler.print(it), String::class.java))
-            }
-            GET("/act/direct/{text}") {
-                ok().body(BodyInserters.fromPublisher(theActorHandler.direct(it), String::class.java))
-            }
-
-            GET("/es/print") {
-                ok().body(BodyInserters.fromPublisher(exampler.print(it), String::class.java))
-            }
-            GET("/es/{cmd}") {
-                ok().body(BodyInserters.fromPublisher(exampler.handle(it), String::class.java))
-            }
-        }
+object Server {
+  fun create(state: UserState): Behavior<Message> =
+    Behaviors.setup { ctx ->
+      val processor = ctx.spawn(UserBehavior.create(state, "1"), "user-behavior")
+      val cfg = runApplication<Application> {
+        addInitializers(beans(processor, ctx.system, state))
+      }
+      running(Started(cfg))
     }
 
-val UNAUTH = ServerResponse.status(HttpStatus.UNAUTHORIZED).build()
-
-data class TheContext(
-    val msg: String
-)
-
-class TheActor : AbstractActor() {
-    override fun createReceive(): Receive =
-        receiveBuilder()
-              .match(TheContext::class.java) {
-                  println("${self.path()} received ${it.msg} on ${Thread.currentThread()}")
-                  sender.tell("Thanks for ${it.msg}", self)
-              }
-              .match(String::class.java) {
-                  println("${self.path()} received $it on ${Thread.currentThread()}")
-                  sender.tell("Thanks for $it", self)
-              }
-              .build()
-
-    companion object {
-        private fun props(): Props = Props.create(TheActor::class.java)
-        fun create(system: ActorSystem, name: String): ActorRef = system.actorOf(props(), name)
-    }
+  private fun running(msg: Started): Behavior<Message> =
+    BehaviorBuilder.create<Message>()
+      .onMessage(Shutdown::class.java) {
+        Behaviors.stopped()
+      }
+      .onSignal(PostStop::class.java) {
+        msg.cfg.close()
+        Behaviors.same()
+      }
+      .build()
 }
 
-class TheActorHandler(private val actor: ActorRef) {
-    fun print(req: ServerRequest): Mono<String> =
-        Mono.fromFuture(
-            ask(actor, TheContext(req.pathVariable("text")), Duration.ofMillis(10))
-                  .toCompletableFuture()
-                  .thenApply { it as String }       // yep, untyped actors :-(
-        )
-    fun direct(req: ServerRequest): Mono<String> =
-        Mono.fromFuture(
-            ask(actor, req.pathVariable("text"), Duration.ofMillis(10))
-                  .toCompletableFuture()
-                  .thenApply { it as String }
-        )
+fun beans(processor: ActorRef<Command>, sys: ActorSystem<Void>, state: UserState) = beans {
+  bean { Cluster.get(sys) }
+  bean { joiner(ref()) }
+  bean<Leaver>()
+  bean<ValidationExceptionHandler>()
+  bean { UserReader(state) }
+  bean<UserHandler>()
+  bean { routes(processor, sys, ref()) }
+}
+
+fun joiner(cluster: Cluster) {
+  cluster.manager().tell(Join.create(cluster.selfMember().address()))
+}
+
+class Leaver(private val cluster: Cluster) {
+  @PreDestroy
+  fun leave() {
+    cluster.manager().tell(Leave.create(cluster.selfMember().address()))
+  }
+}
+
+private val timeout = Duration.ofSeconds(1)
+
+fun ServerRequest.pathAsUUID(s: String): Mono<UUID> = this.monoPathVar(s).map { UUID.fromString(it) }
+
+fun routes(processor: ActorRef<Command>, sys: ActorSystem<Void>, handler: UserHandler): RouterFunction<ServerResponse> =
+  router {
+    "/api".nest {
+      POST("/user") { req -> register(req, processor, sys) }
+      DELETE("/users") { _ -> wipe(processor, sys) }
+
+      POST("/note/{id}") { req -> note(req, processor, sys) }
+
+      GET("/users") { _ -> handler.findAll() }
+      GET("/user/id/{id}", handler::findById)
+      GET("/user/email/{email}", handler::findByEmail)
+    }
+  }
+
+fun register(req: ServerRequest, prc: ActorRef<Command>, sys: ActorSystem<Void>): Mono<ServerResponse> =
+  req.bodyToMono(RegisterUserRequest::class.java)
+    .flatMap { fromFuture(ask(prc, { rt -> it.toCommand(rt) }, timeout, sys.scheduler()).toCompletableFuture()) }
+    .flatMap {
+      when {
+        it.isError -> ServerResponse.badRequest().build()
+        it.isSuccess -> ServerResponse.created(URI.create("/api/read/user/id/${it.value.id}")).bodyValue(it.value)
+        else -> ServerResponse.unprocessableEntity().build()
+      }
+    }
+    .switchIfEmpty(ServerResponse.badRequest().build())
+
+fun wipe(prc: ActorRef<Command>, sys: ActorSystem<Void>): Mono<ServerResponse> =
+  fromFuture(ask(prc, { rt -> DeleteAll(rt) }, timeout, sys.scheduler()).toCompletableFuture())
+    .flatMap { ServerResponse.ok().build() }
+
+fun note(req: ServerRequest, prc: ActorRef<Command>, sys: ActorSystem<Void>): Mono<ServerResponse> =
+  req.bodyToMono(CreateNoteRequest::class.java)
+    .flatMap { fromFuture(ask(prc, { rt -> it.toCommand(rt) }, timeout, sys.scheduler()).toCompletableFuture()) }
+    .flatMap {
+      when {
+        it.isError -> ServerResponse.badRequest().build()
+        it.isSuccess -> ServerResponse.ok().bodyValue(it.value)
+        else -> ServerResponse.unprocessableEntity().build()
+      }
+    }.switchIfEmpty(ServerResponse.badRequest().build())
+
+
+class UserHandler(private val reader: UserReader) {
+  fun findById(req: ServerRequest): Mono<ServerResponse> =
+    req.pathAsUUID("id")
+      .flatMap { id -> reader.find(id) }
+      .flatMap { ur -> ServerResponse.ok().bodyValue(ur) }
+      .switchIfEmpty(ServerResponse.notFound().build())
+
+  fun findByEmail(req: ServerRequest): Mono<ServerResponse> =
+    Mono.just(req.pathVariable("email"))
+      .flatMap { email -> reader.find(email) }
+      .flatMap { ur -> ServerResponse.ok().bodyValue(ur) }
+      .switchIfEmpty(ServerResponse.notFound().build())
+
+  fun findAll(): Mono<ServerResponse> = ServerResponse.ok().bodyValue(reader.findAll())
+}
+
+class UserReader(private val state: UserState) {
+  fun find(a: Any): Mono<UserResponse> = Mono.justOrEmpty(state.find(a)?.toResponse())
+  fun findAll(): List<UserResponse> = state.findAll().map { it.toResponse() }
 }

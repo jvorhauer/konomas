@@ -13,13 +13,24 @@ spec:
       containers:
         - name: noviblog
           image: ghcr.io/jvorhauer/noviblog:latest
+          env:
+            - name: ASTRA_USERNAME
+              valueFrom:
+                configMapKeyRef:
+                  name: astra-config
+                  key: ASTRA_USERNAME
+            - name: ASTRA_PASSWORD
+              valueFrom:
+                configMapKeyRef:
+                  name: astra-config
+                  key: ASTRA_PASSWORD
           resources:
             limits:
               cpu: "1"
-              memory: "512Mi"
+              memory: "1024Mi"
             requests:
-              cpu: 100m
-              memory: "256Mi"
+              cpu: 500m
+              memory: "512Mi"
           livenessProbe:
             failureThreshold: 5
             httpGet:
@@ -52,33 +63,4 @@ spec:
     rollingUpdate:
       maxSurge: 1
       maxUnavailable: 1
-  replicas: 2
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: noviblog
-  labels:
-    app: noviblog
-spec:
-  ports:
-  - port: 8080
-  type: LoadBalancer
-  selector:
-    app: noviblog
----
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: noviblog
-spec:
-  rules:
-    - http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: noviblog
-                port:
-                  name: http
+  replicas: 1

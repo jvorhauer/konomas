@@ -36,3 +36,11 @@ http-client.private.env.json
 
 ### VS Code ###
 .vscode/
+
+
+### Akka Persistence
+storage/
+snapshots/
+
+### special case: to have jib copy the required zip file for astra into the image, the file needs to be in the project
+jib/
