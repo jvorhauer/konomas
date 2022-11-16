@@ -69,6 +69,8 @@ class Leaver(private val cluster: Cluster) {
   }
 }
 
+fun ServerRequest.monoPathVar(s: String): Mono<String> =
+  Mono.justOrEmpty(s).mapNotNull { runCatching { this.pathVariable(it) }.getOrNull() }
 fun ServerRequest.pathAsUUID(s: String): Mono<UUID> = this.monoPathVar(s).map { UUID.fromString(it) }
 
 fun routes(handler: ApiHandler): RouterFunction<ServerResponse> =
@@ -95,10 +97,10 @@ class ApiHandler(private val reader: UserReader, private val scheduler: Schedule
     req.bodyToMono(RegisterUserRequest::class.java)
       .flatMap { fromFuture(ask(processor, { rt -> it.toCommand(rt) }, timeout, scheduler).toCompletableFuture()) }
       .flatMap {
-        when {
-          it.isError -> ServerResponse.badRequest().build()
-          it.isSuccess -> ServerResponse.created(URI.create("/api/user/id/${it.value.id}")).bodyValue(it.value)
-          else -> ServerResponse.unprocessableEntity().build()
+        if (it.isSuccess) {
+          ServerResponse.created(URI.create("/api/user/id/${it.value.id}")).bodyValue(it.value)
+        } else {
+          ServerResponse.badRequest().build()
         }
       }
       .switchIfEmpty(ServerResponse.badRequest().build())
@@ -128,10 +130,10 @@ class ApiHandler(private val reader: UserReader, private val scheduler: Schedule
     loggedin(req).flatMap { req.bodyToMono(CreateNoteRequest::class.java) }
       .flatMap { fromFuture(ask(processor, { rt -> it.toCommand(rt) }, timeout, scheduler).toCompletableFuture()) }
       .flatMap {
-        when {
-          it.isError -> ServerResponse.badRequest().build()
-          it.isSuccess -> ServerResponse.created(URI.create("/api/note/${it.value.id}")).bodyValue(it.value)
-          else -> ServerResponse.unprocessableEntity().build()
+        if (it.isSuccess) {
+          ServerResponse.created(URI.create("/api/note/${it.value.id}")).bodyValue(it.value)
+        } else {
+          ServerResponse.badRequest().build()
         }
       }.switchIfEmpty(ServerResponse.status(401).build())
 

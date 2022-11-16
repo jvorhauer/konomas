@@ -1,14 +1,11 @@
 package blog
 
 import org.springframework.http.HttpStatus.BAD_REQUEST
-import org.springframework.web.reactive.function.server.ServerRequest
 import org.valiktor.ConstraintViolationException
 import org.valiktor.i18n.mapToMessage
 import org.valiktor.springframework.config.ValiktorConfiguration
 import org.valiktor.springframework.http.ValiktorExceptionHandler
 import org.valiktor.springframework.http.ValiktorResponse
-import reactor.core.publisher.Mono
-import reactor.core.publisher.Mono.justOrEmpty
 import java.util.Locale
 
 data class ValidationError(val errors: Map<String, String>)
@@ -25,5 +22,3 @@ class ValidationExceptionHandler(private val config: ValiktorConfiguration): Han
             )
         )
 }
-
-fun ServerRequest.monoPathVar(s: String): Mono<String> = justOrEmpty(s).mapNotNull { runCatching { this.pathVariable(it) }.getOrNull() }
