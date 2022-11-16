@@ -63,7 +63,7 @@ data class RegisterUser(
   val name: String,
   val password: String,
   val born: LocalDate,
-  override val replyTo: ReplyTo
+  val replyTo: ReplyTo
 ) : Command {
   constructor(rur: RegisterUserRequest, replyTo: ReplyTo) : this(
     UUID.randomUUID(),
@@ -129,6 +129,9 @@ data class UserState(private val users: MutableMap<UUID, User> = ConcurrentHashM
     is String -> users.values.find { it.email == a }
     else -> null
   }
+  fun exists(a: Any): Boolean = find(a) != null
+  fun notExists(id: UUID): Boolean = !exists(id)
+  fun findAll(): List<User> = users.values.toList()
 
   fun login(username: String, password: String): String? {
     val user = find(username)
@@ -140,13 +143,7 @@ data class UserState(private val users: MutableMap<UUID, User> = ConcurrentHashM
       null
     }
   }
-
   fun loggedin(session: String): Boolean = (sessions[session]?.started ?: 0L) > (System.currentTimeMillis() - timeout)
-
-  fun exists(a: Any): Boolean = find(a) != null
-  fun notExists(id: UUID): Boolean = !exists(id)
-  fun findAll(): List<User> = users.values.toList()
-  fun wipe() = users.clear()
 
   fun addNote(note: Note): UserState = find(note.user)
     .apply { this?.notes?.add(note) }

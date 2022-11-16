@@ -119,7 +119,7 @@ class ApiHandler(private val reader: UserReader, private val scheduler: Schedule
       .switchIfEmpty(ServerResponse.notFound().build())
 
   fun findByEmail(req: ServerRequest): Mono<ServerResponse> =
-    Mono.just(req.pathVariable("email"))
+    Mono.justOrEmpty(req.pathVariable("email"))
       .flatMap { email -> reader.find(email) }
       .flatMap { ur -> ServerResponse.ok().bodyValue(ur) }
       .switchIfEmpty(ServerResponse.notFound().build())
@@ -127,7 +127,8 @@ class ApiHandler(private val reader: UserReader, private val scheduler: Schedule
   fun findAll(): Mono<ServerResponse> = ServerResponse.ok().bodyValue(reader.findAll())
 
   fun note(req: ServerRequest): Mono<ServerResponse> =
-    loggedin(req).flatMap { req.bodyToMono(CreateNoteRequest::class.java) }
+    loggedin(req)
+      .flatMap { req.bodyToMono(CreateNoteRequest::class.java) }
       .flatMap { fromFuture(ask(processor, { rt -> it.toCommand(rt) }, timeout, scheduler).toCompletableFuture()) }
       .flatMap {
         if (it.isSuccess) {
@@ -144,7 +145,7 @@ class ApiHandler(private val reader: UserReader, private val scheduler: Schedule
       .switchIfEmpty(ServerResponse.notFound().build())
 
   private fun loggedin(req: ServerRequest): Mono<Boolean> =
-    Mono.justOrEmpty(req.headers().firstHeader("X-Auth")).map { reader.loggedin(it) }
+    Mono.justOrEmpty(req.headers().firstHeader("X-Auth")).mapNotNull { if (reader.loggedin(it)) true else null }
 }
 
 class UserReader(private val state: UserState) {

@@ -10,11 +10,7 @@ val DTF: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
 typealias ReplyTo = ActorRef<StatusReply<Response>>
 
 interface CborSerializable
-interface Command: CborSerializable { val replyTo: ReplyTo }
+interface Command: CborSerializable
 interface Event: CborSerializable
 interface Entity: CborSerializable { val id: UUID }
 interface Response { val id: UUID }
-
-data class DeleteAll(override val replyTo: ReplyTo): Command
-
-data class DeleteResponse(override val id: UUID = UUID.randomUUID()): Response

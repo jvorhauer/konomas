@@ -12,8 +12,6 @@ import akka.persistence.typed.javadsl.EventSourcedBehavior
 import akka.persistence.typed.javadsl.RetentionCriteria
 import akka.persistence.typed.javadsl.SignalHandler
 import blog.Command
-import blog.DeleteAll
-import blog.DeleteResponse
 import blog.Event
 import blog.model.CreateNote
 import blog.model.NoteEvent
@@ -33,7 +31,6 @@ class UserBehavior(private val state: UserState, pid: PersistenceId) : EventSour
   override fun commandHandler(): CommandHandler<Command, Event, UserState> = newCommandHandlerBuilder()
     .forAnyState()
     .onCommand(RegisterUser::class.java, this::onRegisterUser)
-    .onCommand(DeleteAll::class.java, this::onDeleteAll)
     .onCommand(CreateNote::class.java, this::onCreateNote)
     .build()
 
@@ -65,7 +62,6 @@ class UserBehavior(private val state: UserState, pid: PersistenceId) : EventSour
       }
     }
 
-
   override fun eventHandler(): EventHandler<UserState, Event> = newEventHandlerBuilder()
     .forAnyState()
     .onEvent(UserEvent::class.java) { event -> state.save(event.toEntity()) }
@@ -77,15 +73,7 @@ class UserBehavior(private val state: UserState, pid: PersistenceId) : EventSour
       .onSignal(RecoveryCompleted::class.java, this::recovered)
       .build()
 
-
   private fun recovered(state: UserState, rc: RecoveryCompleted): RecoveryCompleted = rc.apply { state.recovered = true }
-
-  private fun onDeleteAll(state: UserState, cmd: DeleteAll): Effect<Event, UserState> {
-    state.wipe()
-    return Effect().none().thenRun {
-      cmd.replyTo.tell(StatusReply.success(DeleteResponse()))
-    }
-  }
 
   companion object {
     fun create(state: UserState, pid: String): Behavior<Command> = UserBehavior(state, PersistenceId.of("user-behavior", pid))

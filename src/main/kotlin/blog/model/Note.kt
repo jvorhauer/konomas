@@ -34,7 +34,7 @@ data class CreateNote(
   val created: LocalDateTime = LocalDateTime.now(),
   val title: String,
   val body: String,
-  override val replyTo: ReplyTo
+  val replyTo: ReplyTo
 ) : Command {
   fun toEvent() = NoteEvent(id, user, created, Encode.forHtml(title), Encode.forHtml(body))
 }

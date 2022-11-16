@@ -55,6 +55,9 @@ class ApiTests {
     assertThat(user).isNotNull
     client.get("/api/users").exchange().expectStatus().isOk.expectBodyList(UserResponse::class.java).hasSize(1)
 
+    client.get("/api/user/id/${user?.id}").exchange().expectStatus().isOk
+    client.get("/api/user/email/${user?.email}").exchange().expectStatus().isOk
+
     val session = client.post("/api/login")
       .bodyValue("""{"username":"test@test.er","password":"welkom123"}""")
       .exchange()
