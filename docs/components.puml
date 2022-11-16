@@ -22,7 +22,7 @@ package "Read Side" {
 }
 
 [Command Handler] <-- [Model] : check
-[Command Handler] --> [Event Handler] : broadcast
+[Command Handler] --> [Event Handler]
 [Command Handler] --> [Journal] : persist
 [Event Handler] --> [Model] : update
 

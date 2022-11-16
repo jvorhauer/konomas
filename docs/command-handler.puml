@@ -2,19 +2,22 @@
 'https://plantuml.com/activity-diagram-beta
 
 start
-:Received Command;
-:Validate Command;
+:Received Request;
+:Validate Request;
 if (valid) then (yes)
-    :Check with Current State;
-    if (applicable) then (yes)
-        :Create Event(s);
-        :Persist Event(s);
-        :Publish Event(s) = broadcast;
-    else
-        end
-    endif
-else
+  :Transform Request to Command;
+  :Check with Current State;
+  if (applicable) then (yes)
+    :Transform Command to Event(s);
+    :Persist Event(s);
+    :Update State with Event(s);
+    :Publish Event(s) = broadcast;
+    :Transform Event to Entity;
+  else
     end
+  endif
+else
+  end
 endif
 stop
 

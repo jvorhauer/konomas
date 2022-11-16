@@ -9,7 +9,7 @@ An Event Sourced version of the backend for the Novi Blog.
 
 ## Tech Stack
 
-* Kotlin (sick and tired of Java, still contemplating Scala though)
+* Kotlin (tired of Java, still contemplating Scala though)
 * Spring WebFlux (almost all annotations reduced away)
 * Netty (async, best for webflux)
 * Spring Actuator (free k8s health endpoints)
@@ -20,11 +20,18 @@ An Event Sourced version of the backend for the Novi Blog.
 * Jackson (easier and most boring option)
 * Cassandra (event store)
 
+## Build
+
+GitHub Actions FTW! See `.github/workflows/gradle.yml`.
+
+## Unit Test Coverage
+
+![sunburst](https://codecov.io/gh/jvorhauer/noviblog/branch/main/graphs/sunburst.svg?token=Nn5OmNCOEY)
+
 ## Deploy
 
-To Kubernetes cluster at MiruVor.
-
-This needs some more work, mainly on how to get the authentication ZIP archive working in k8s...
+To Kubernetes cluster at MiruVor, see `deploy/deployment.yaml`. First deploy to my k8s cluster also needs `deploy/service.yaml`.
+To allow traffic from outside the namespace in k8s, `deploy/ingress.yaml` should also be applied.
 
 ### Docker Registry @ GitHub
 
@@ -39,4 +46,4 @@ k8s secret `dockerregistry`. The JSON file and the YAML file to deploy it are in
 ### nginx proxy
 
 The noviblog api is proxied by an nginx running on enna. The configuration is in `/etc/nginx/sites-available/noviblog-https.conf`, which is 
-soft-linked (ln -s) to 
+soft-linked (ln -s) to `/etc/nginx/sites-enabled`. A redirector to the https site via `noviblog-http.conf`.
