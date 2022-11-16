@@ -7,6 +7,7 @@ plugins {
   kotlin("plugin.spring") version "1.6.21"
   id("com.google.cloud.tools.jib") version "3.3.1"
   id("net.researchgate.release") version "3.0.2"
+  id("jacoco")
 }
 
 group = "nl.vorhauer"
@@ -86,3 +87,13 @@ jib {
 tasks.named("jib") {
   dependsOn("test")
 }
+
+tasks.jacocoTestReport {
+  reports {
+    xml.required.set(true)
+    html.required.set(false)
+    csv.required.set(false)
+  }
+}
+
+tasks.named("check") { dependsOn("jacocoTestReport") }
