@@ -3,10 +3,8 @@ package blog
 import akka.actor.typed.ActorRef
 import akka.actor.typed.ActorSystem
 import akka.actor.typed.Behavior
-import akka.actor.typed.PostStop
 import akka.actor.typed.Scheduler
 import akka.actor.typed.javadsl.AskPattern.ask
-import akka.actor.typed.javadsl.BehaviorBuilder
 import akka.actor.typed.javadsl.Behaviors
 import akka.cluster.typed.Cluster
 import akka.cluster.typed.Join
@@ -20,7 +18,6 @@ import blog.model.UserState
 import blog.write.UserBehavior
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
-import org.springframework.context.ConfigurableApplicationContext
 import org.springframework.context.support.beans
 import org.springframework.web.reactive.function.server.RouterFunction
 import org.springframework.web.reactive.function.server.ServerRequest
@@ -40,30 +37,15 @@ fun main() {
   ActorSystem.create(Server.create(UserState()), "system")
 }
 
-sealed interface Message
-data class Started(val cfg: ConfigurableApplicationContext) : Message
-object Shutdown : Message
-
 object Server {
-  fun create(state: UserState): Behavior<Message> =
+  fun create(state: UserState): Behavior<Void> =
     Behaviors.setup { ctx ->
       val processor = ctx.spawn(UserBehavior.create(state, "1"), "user-behavior")
-      val cfg = runApplication<Application> {
+      runApplication<Application> {
         addInitializers(beans(processor, ctx.system, state))
       }
-      running(Started(cfg))
+      Behaviors.same()
     }
-
-  private fun running(msg: Started): Behavior<Message> =
-    BehaviorBuilder.create<Message>()
-      .onMessage(Shutdown::class.java) {
-        Behaviors.stopped()
-      }
-      .onSignal(PostStop::class.java) {
-        msg.cfg.close()
-        Behaviors.same()
-      }
-      .build()
 }
 
 fun beans(processor: ActorRef<Command>, system: ActorSystem<Void>, state: UserState) = beans {

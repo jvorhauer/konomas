@@ -1,5 +1,9 @@
 # Novi Blog
 
+## Status
+
+[![build](https://github.com/jvorhauer/noviblog/actions/workflows/gradle.yml/badge.svg)](https://github.com/jvorhauer/noviblog/actions/workflows/gradle.yml)
+
 An Event Sourced version of the backend for the Novi Blog.
 
 ## Tech Stack

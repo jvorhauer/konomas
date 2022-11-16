@@ -75,8 +75,6 @@ class ApiTests {
       .expectBody(NoteResponse::class.java)
       .returnResult().responseBody
 
-    println("note: $note")
-
     client.get("/api/note/${note?.id}").exchange().expectStatus().isOk
   }
 }
