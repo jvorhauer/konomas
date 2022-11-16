@@ -3,6 +3,7 @@
 ## Status
 
 [![build](https://github.com/jvorhauer/noviblog/actions/workflows/gradle.yml/badge.svg)](https://github.com/jvorhauer/noviblog/actions/workflows/gradle.yml)
+[![codecov](https://codecov.io/gh/jvorhauer/noviblog/branch/main/graph/badge.svg?token=Nn5OmNCOEY)](https://codecov.io/gh/jvorhauer/noviblog)
 
 An Event Sourced version of the backend for the Novi Blog.
 
