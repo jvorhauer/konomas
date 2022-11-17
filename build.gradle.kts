@@ -100,4 +100,5 @@ tasks.named("check") { dependsOn("jacocoTestReport") }
 
 configure<ReleaseExtension> {
   tagTemplate.set("v${version}")
+  failOnUnversionedFiles.set(false)
 }
