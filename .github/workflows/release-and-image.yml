@@ -18,7 +18,7 @@ jobs:
       - name: Build with Gradle
         uses: gradle/gradle-build-action@v2
         with:
-          arguments: release -PuseAutomaticVersion=true
+          arguments: release -Prelease.useAutomaticVersion=true
       - name: Make Image with Jib
         uses: gradle/gradle-build-action@v2
         with:
