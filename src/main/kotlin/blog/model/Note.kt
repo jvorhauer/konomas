@@ -7,7 +7,6 @@ import blog.ReplyTo
 import blog.Response
 import org.owasp.encoder.Encode
 import org.valiktor.functions.isNotBlank
-import org.valiktor.functions.isNotNull
 import org.valiktor.validate
 import java.time.LocalDateTime
 import java.util.UUID
@@ -19,7 +18,6 @@ data class CreateNoteRequest(
 ) {
   init {
     validate(this) {
-      validate(CreateNoteRequest::user).isNotNull()
       validate(CreateNoteRequest::title).isNotBlank()
       validate(CreateNoteRequest::body).isNotBlank()
     }

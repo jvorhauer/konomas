@@ -70,7 +70,7 @@ class ApiTests {
       .exchange()
       .expectStatus().isForbidden
 
-    val note = client.post("/api/note/${user?.id}")
+    val note = client.post("/api/note")
       .header("X-Auth", session)
       .bodyValue("""{"user":"${user?.id}","title":"Titel","body":"Body tekst"}""")
       .exchange()

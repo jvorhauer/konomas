@@ -13,6 +13,7 @@ import blog.model.CreateNoteRequest
 import blog.model.LoginRequest
 import blog.model.Note
 import blog.model.RegisterUserRequest
+import blog.model.User
 import blog.model.UserResponse
 import blog.model.UserState
 import blog.write.UserBehavior
@@ -79,7 +80,7 @@ fun routes(handler: ApiHandler): RouterFunction<ServerResponse> =
       POST("/user", handler::register)
       POST("/login", handler::login)
 
-      POST("/note/{id}", handler::note)
+      POST("/note", handler::note)
       GET("/note/{id}", handler::findNote)
 
       GET("/users") { _ -> handler.findAll() }
@@ -128,7 +129,7 @@ class ApiHandler(private val reader: UserReader, private val scheduler: Schedule
 
   fun note(req: ServerRequest): Mono<ServerResponse> =
     loggedin(req)
-      .flatMap { req.bodyToMono(CreateNoteRequest::class.java) }
+      .flatMap { principal -> req.bodyToMono(CreateNoteRequest::class.java).map { it.copy(user = principal.id) } }
       .flatMap { fromFuture(ask(processor, { rt -> it.toCommand(rt) }, timeout, scheduler).toCompletableFuture()) }
       .flatMap {
         if (it.isSuccess) {
@@ -144,14 +145,14 @@ class ApiHandler(private val reader: UserReader, private val scheduler: Schedule
       .flatMap { ServerResponse.ok().bodyValue(it) }
       .switchIfEmpty(ServerResponse.notFound().build())
 
-  private fun loggedin(req: ServerRequest): Mono<Boolean> =
-    Mono.justOrEmpty(req.headers().firstHeader("X-Auth")).mapNotNull { if (reader.loggedin(it)) true else null }
+  private fun loggedin(req: ServerRequest): Mono<User> =
+    Mono.justOrEmpty(req.headers().firstHeader("X-Auth")).mapNotNull { reader.loggedin(it) }
 }
 
 class UserReader(private val state: UserState) {
   fun find(a: Any): Mono<UserResponse> = Mono.justOrEmpty(state.find(a)?.toResponse())
   fun login(u: String, p: String): Mono<String> = Mono.justOrEmpty(state.login(u, p))
-  fun loggedin(s: String): Boolean = state.loggedin(s)
+  fun loggedin(s: String): User? = state.loggedin(s)
   fun findAll(): List<UserResponse> = state.findAll().map { it.toResponse() }
   fun findNote(id: UUID): Note? = state.findNote(id)
 }

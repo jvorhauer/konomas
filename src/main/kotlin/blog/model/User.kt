@@ -143,7 +143,12 @@ data class UserState(private val users: MutableMap<UUID, User> = ConcurrentHashM
       null
     }
   }
-  fun loggedin(session: String): Boolean = (sessions[session]?.started ?: 0L) > (System.currentTimeMillis() - timeout)
+  fun loggedin(session: String): User? =
+    if ((sessions[session]?.started ?: 0L) > (System.currentTimeMillis() - timeout)) {
+      sessions[session]?.user
+    } else {
+      null
+    }
 
   fun addNote(note: Note): UserState = find(note.user)
     .apply { this?.notes?.add(note) }
@@ -157,6 +162,7 @@ data class UserState(private val users: MutableMap<UUID, User> = ConcurrentHashM
 
 // maybe later in a cluster: forward a new registration to the other nodes, so that all state is up-to-date, but not if we are
 // recovering! Therefore, see the UserBehavior that handles the RecoveryCompleted signal to flag that state.
+// Alternative could be to use Cassandra/Astra to stream events to the nodes...
 data class ForwardRegistration(
   val id: UUID,
   val email: String,

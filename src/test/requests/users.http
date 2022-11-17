@@ -9,6 +9,17 @@ Content-Type: application/json
   "born": "1967-03-01"
 }
 
+### login-jurjen
+POST {{host}}/api/login
+Content-Type: application/json
+
+{
+  "username": "jurjen@vorhauer.nl",
+  "password": "password"
+}
+
+> {% client.global.set("authorized", response.body); %}
+
 ### register-frodo
 POST {{host}}/api/user
 Content-Type: application/json
@@ -38,11 +49,7 @@ GET {{host}}/api/user/id/f702e417-c0f1-45ca-814c-e346304f0a95
 GET {{host}}/api/user/email/jurjen@vorhauer.nl
 
 ### post-new-note
-POST {{host}}/api/note/70ac8181-a29c-46e1-b488-93bcddad2c53
+POST {{host}}/api/note
 Content-Type: application/json
 
-{
-  "user": "70ac8181-a29c-46e1-b488-93bcddad2c53",
-  "title": "My first Note",
-  "body": "Note taking in its simplest form :-)"
-}
+{ "title": "My first Note", "body": "Note taking in its simplest form :-)" }
