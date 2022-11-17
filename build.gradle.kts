@@ -1,3 +1,4 @@
+import net.researchgate.release.ReleaseExtension
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
@@ -97,3 +98,7 @@ tasks.jacocoTestReport {
 }
 
 tasks.named("check") { dependsOn("jacocoTestReport") }
+
+configure<ReleaseExtension> {
+  tagTemplate.set("v${version}")
+}
