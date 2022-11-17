@@ -25,5 +25,5 @@ jobs:
         with:
           arguments: jib
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_USER: ${{ secrets.GITHUB_USER }}
+          GITHUB_TOKEN: ${{ secrets.GH_JIB_TOKEN }}
+          GITHUB_USER: "jvorhauer"
