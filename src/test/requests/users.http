@@ -51,5 +51,10 @@ GET {{host}}/api/user/email/jurjen@vorhauer.nl
 ### post-new-note
 POST {{host}}/api/note
 Content-Type: application/json
+X-Auth: {{authorized}}
 
-{ "title": "My first Note", "body": "Note taking in its simplest form :-)" }
+{
+  "user": "39260243-6305-4898-b03a-6ce880894931",
+  "title": "Jurjen's first Note",
+  "body": "Note taking in its simplest form :-)"
+}

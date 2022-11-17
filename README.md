@@ -43,6 +43,15 @@ microk8s.kubectl config view --raw > $HOME/.kube/config
 To Kubernetes cluster at MiruVor, see `deploy/deployment.yaml`. First deploy to my k8s cluster also needs `deploy/service.yaml`.
 To allow traffic from outside the namespace in k8s, `deploy/ingress.yaml` should also be applied.
 
+### re-deploy
+
+Should be a RollingUpdate, checking now!
+
+
+```shell
+kubectl rollout restart -n default deployment noviblog
+```
+
 ### Docker Registry @ GitHub
 
 ```shell
