@@ -55,6 +55,6 @@ X-Auth: {{authorized}}
 
 {
   "user": "39260243-6305-4898-b03a-6ce880894931",
-  "title": "Jurjen's first Note",
+  "title": "Jurjen's second Note",
   "body": "Note taking in its simplest form :-)"
 }

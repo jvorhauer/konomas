@@ -45,11 +45,15 @@ To allow traffic from outside the namespace in k8s, `deploy/ingress.yaml` should
 
 ### re-deploy
 
-Should be a RollingUpdate, checking now!
-
-
 ```shell
 kubectl rollout restart -n default deployment noviblog
+```
+
+Connect to the new pod:
+
+```shell
+kubectl get pods
+kubectl exec -i -t ||pod-name|| -- /bin/bash
 ```
 
 ### Docker Registry @ GitHub

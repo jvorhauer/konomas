@@ -1,4 +1,4 @@
-name: release-and-jib
+name: release
 on:
   push:
     branches: [ "main" ]
@@ -20,10 +20,3 @@ jobs:
         uses: gradle/gradle-build-action@v2
         with:
           arguments: release -Prelease.useAutomaticVersion=true
-      - name: Make Image with Jib
-        uses: gradle/gradle-build-action@v2
-        with:
-          arguments: jib
-        env:
-          GITHUB_TOKEN: ${{ secrets.GH_JIB_TOKEN }}
-          GITHUB_USER: "jvorhauer"
