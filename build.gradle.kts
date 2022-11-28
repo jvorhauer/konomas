@@ -44,7 +44,7 @@ dependencies {
   implementation("org.valiktor:valiktor-javatime:0.12.0")
   implementation("org.owasp.encoder:encoder:1.2.3")
   implementation("io.github.microutils:kotlin-logging-jvm:3.0.4")
-  implementation("org.slf4j:slf4j-simple:2.0.3")
+  implementation("org.slf4j:slf4j-simple:2.0.5")
 
   testImplementation("org.springframework.boot:spring-boot-starter-test")
   testImplementation("io.projectreactor:reactor-test:3.5.0")
