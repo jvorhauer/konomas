@@ -25,7 +25,7 @@ dependencies {
 
   implementation("org.springframework.boot:spring-boot-starter-webflux")
   implementation("org.springframework.boot:spring-boot-starter-actuator")
-  implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.14.0")
+  implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.14.2")
   implementation("io.projectreactor.kotlin:reactor-kotlin-extensions:1.2.0")
   implementation("org.jetbrains.kotlin:kotlin-reflect")
   implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
