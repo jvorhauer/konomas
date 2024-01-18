@@ -51,10 +51,18 @@ data class LoginRequest(
   }
 }
 
+data class Follow(
+  val leader: User,
+  val follower: User,
+  val rt: ReplyTo
+) : Command {
+  fun toEvent() = FollowedEvent(leader, follower)
+}
+
 data class UserSession(
   val id: String,
   val user: User,
-  val started: Long = System.currentTimeMillis()
+  var started: Long = System.currentTimeMillis()
 )
 
 data class RegisterUser(
@@ -93,8 +101,9 @@ data class UserEvent(
   val joined: LocalDate = LocalDate.now()
 ) : Event {
   fun toEntity(): User = User(id, email, name, password, born, joined)
-  fun toForward(): ForwardRegistration = ForwardRegistration(id, email, name, password, born, joined)
 }
+
+data class FollowedEvent(val leader: User, val follower: User)
 
 data class User(
   override val id: UUID,
@@ -145,6 +154,7 @@ data class UserState(private val users: MutableMap<UUID, User> = ConcurrentHashM
   }
   fun loggedin(session: String): User? =
     if ((sessions[session]?.started ?: 0L) > (System.currentTimeMillis() - timeout)) {
+      sessions[session]?.started = System.currentTimeMillis()   // each login resets counter, to avoid surprises
       sessions[session]?.user
     } else {
       null
@@ -154,20 +164,16 @@ data class UserState(private val users: MutableMap<UUID, User> = ConcurrentHashM
     .apply { this?.notes?.add(note) }
     .also { if (it != null ) notes[note.id] = note }
     .let { this }
+
+  fun updateNote(note: Note): UserState = find(note.user)
+    .apply { if (this != null && this.notes.removeIf { it.id == note.id }) addNote(note) }
+    .also { notes[note.id] = note }
+    .let { this }
+
+  fun deleteNote(note: Note): UserState = find(note.user)
+    .apply { this?.notes?.removeIf { it.id == note.id } }
+    .also { notes.remove(note.id) }
+    .let { this }
+
   fun findNote(id: UUID): Note? = notes[id]
 }
-
-
-// ----
-
-// maybe later in a cluster: forward a new registration to the other nodes, so that all state is up-to-date, but not if we are
-// recovering! Therefore, see the UserBehavior that handles the RecoveryCompleted signal to flag that state.
-// Alternative could be to use Cassandra/Astra to stream events to the nodes...
-data class ForwardRegistration(
-  val id: UUID,
-  val email: String,
-  val name: String,
-  val password: String,
-  val born: LocalDate,
-  val joined: LocalDate
-)

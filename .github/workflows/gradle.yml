@@ -8,15 +8,16 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-      - name: Setup JDK 11
+      - name: Setup JDK 21
         uses: actions/setup-java@v3
         with:
-          java-version: '11'
+          java-version: '21'
           distribution: 'temurin'
       - name: Build with Gradle
-        uses: gradle/gradle-build-action@v2
+        uses: gradle/gradle-build-action@v3
         with:
           arguments: build
+          gradle-version: 8.5
       - name: Upload coverage to CodeCov
         uses: codecov/codecov-action@v3
         with:

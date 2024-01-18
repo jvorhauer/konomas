@@ -6,13 +6,13 @@ import akka.actor.typed.Behavior
 import akka.actor.typed.Scheduler
 import akka.actor.typed.javadsl.AskPattern.ask
 import akka.actor.typed.javadsl.Behaviors
-import akka.cluster.typed.Cluster
-import akka.cluster.typed.Join
-import akka.cluster.typed.Leave
 import blog.model.CreateNoteRequest
+import blog.model.DeleteNote
+import blog.model.Follow
 import blog.model.LoginRequest
 import blog.model.Note
 import blog.model.RegisterUserRequest
+import blog.model.UpdateNoteRequest
 import blog.model.User
 import blog.model.UserResponse
 import blog.model.UserState
@@ -24,12 +24,13 @@ import org.springframework.web.reactive.function.server.RouterFunction
 import org.springframework.web.reactive.function.server.ServerRequest
 import org.springframework.web.reactive.function.server.ServerResponse
 import org.springframework.web.reactive.function.server.router
+import org.valiktor.springframework.config.ValiktorConfiguration
 import reactor.core.publisher.Mono
-import reactor.core.publisher.Mono.fromFuture
+import reactor.core.publisher.Mono.fromCompletionStage
+import reactor.core.publisher.Mono.justOrEmpty
 import java.net.URI
 import java.time.Duration
 import java.util.UUID
-import javax.annotation.PreDestroy
 
 @SpringBootApplication
 class Application
@@ -50,28 +51,15 @@ object Server {
 }
 
 fun beans(processor: ActorRef<Command>, system: ActorSystem<Void>, state: UserState) = beans {
-  bean { Cluster.get(system) }
-  bean { joiner(ref()) }
-  bean<Leaver>()
-  bean<ValidationExceptionHandler>()
+  bean<ValiktorConfiguration>()
+  bean { ValidationExceptionHandler(ref()) }
   bean { UserReader(state) }
   bean { ApiHandler(ref(), system.scheduler(), processor) }
   bean { routes(ref()) }
 }
 
-fun joiner(cluster: Cluster) {
-  cluster.manager().tell(Join.create(cluster.selfMember().address()))
-}
-
-class Leaver(private val cluster: Cluster) {
-  @PreDestroy
-  fun leave() {
-    cluster.manager().tell(Leave.create(cluster.selfMember().address()))
-  }
-}
-
 fun ServerRequest.monoPathVar(s: String): Mono<String> =
-  Mono.justOrEmpty(s).mapNotNull { runCatching { this.pathVariable(it) }.getOrNull() }
+  justOrEmpty(s).mapNotNull { runCatching { this.pathVariable(it) }.getOrNull() }
 fun ServerRequest.pathAsUUID(s: String): Mono<UUID> = this.monoPathVar(s).map { UUID.fromString(it) }
 
 fun routes(handler: ApiHandler): RouterFunction<ServerResponse> =
@@ -79,9 +67,12 @@ fun routes(handler: ApiHandler): RouterFunction<ServerResponse> =
     "/api".nest {
       POST("/user", handler::register)
       POST("/login", handler::login)
+      POST("/follow", handler::follow)
 
-      POST("/note", handler::note)
+      POST("/note", handler::createNote)
       GET("/note/{id}", handler::findNote)
+      PUT("/note", handler::updateNote)
+      DELETE("/note/{id}", handler::deleteNote)
 
       GET("/users") { _ -> handler.findAll() }
       GET("/user/id/{id}", handler::findById)
@@ -93,65 +84,94 @@ fun routes(handler: ApiHandler): RouterFunction<ServerResponse> =
 class ApiHandler(private val reader: UserReader, private val scheduler: Scheduler, private val processor: ActorRef<Command>) {
 
   private val timeout = Duration.ofSeconds(1)
+  private val badRequest = ServerResponse.badRequest().build()
+  private val ok = ServerResponse.ok()
+  private val notFound = ServerResponse.notFound().build()
+  private val unauthorized = ServerResponse.status(401).build()
+  private val forbidden = ServerResponse.status(403).bodyValue("User unknown or wrong password")
+  private fun uri(s: String) = URI.create(s)
 
   fun register(req: ServerRequest): Mono<ServerResponse> =
     req.bodyToMono(RegisterUserRequest::class.java)
-      .flatMap { fromFuture(ask(processor, { rt -> it.toCommand(rt) }, timeout, scheduler).toCompletableFuture()) }
+      .flatMap { fromCompletionStage(ask(processor, { rt -> it.toCommand(rt) }, timeout, scheduler)) }
       .flatMap {
         if (it.isSuccess) {
-          ServerResponse.created(URI.create("/api/user/id/${it.value.id}")).bodyValue(it.value)
+          ServerResponse.created(uri("/api/user/id/${it.value.id}")).bodyValue(it.value)
         } else {
-          ServerResponse.badRequest().build()
+          badRequest
         }
       }
-      .switchIfEmpty(ServerResponse.badRequest().build())
+      .switchIfEmpty(badRequest)
 
   fun login(req: ServerRequest): Mono<ServerResponse> =
     req.bodyToMono(LoginRequest::class.java)
       .flatMap { login -> reader.login(login.username, login.password) }
-      .flatMap {
-        ServerResponse.ok().bodyValue(it)
-      }.switchIfEmpty(ServerResponse.status(403).bodyValue("User unknown or wrong password"))
+      .flatMap { ok.bodyValue(it) }
+      .switchIfEmpty(forbidden)
+
+  fun follow(req: ServerRequest): Mono<ServerResponse> =
+    loggedin(req).
+      flatMap { principal -> req.pathAsUUID("id")
+        .flatMap { id -> reader.find(id) }
+        .flatMap { fromCompletionStage(ask(processor, { rt -> Follow(it, principal, rt) }, timeout, scheduler)) }
+        .flatMap { if (it.isSuccess) ok.build() else badRequest }
+        .switchIfEmpty(notFound)
+      }.switchIfEmpty(unauthorized)
+
 
   fun findById(req: ServerRequest): Mono<ServerResponse> =
     req.pathAsUUID("id")
-      .flatMap { id -> reader.find(id) }
-      .flatMap { ur -> ServerResponse.ok().bodyValue(ur) }
-      .switchIfEmpty(ServerResponse.notFound().build())
+      .flatMap { reader.find(it) }
+      .flatMap { ServerResponse.ok().bodyValue(it) }
+      .switchIfEmpty(notFound)
 
   fun findByEmail(req: ServerRequest): Mono<ServerResponse> =
-    Mono.justOrEmpty(req.pathVariable("email"))
-      .flatMap { email -> reader.find(email) }
-      .flatMap { ur -> ServerResponse.ok().bodyValue(ur) }
-      .switchIfEmpty(ServerResponse.notFound().build())
+    justOrEmpty(req.pathVariable("email"))
+      .flatMap { reader.find(it) }
+      .flatMap { ok.bodyValue(it) }
+      .switchIfEmpty(notFound)
 
-  fun findAll(): Mono<ServerResponse> = ServerResponse.ok().bodyValue(reader.findAll())
+  fun findAll(): Mono<ServerResponse> = ok.bodyValue(reader.findAll())
 
-  fun note(req: ServerRequest): Mono<ServerResponse> =
+  fun createNote(req: ServerRequest): Mono<ServerResponse> =
     loggedin(req)
       .flatMap { principal -> req.bodyToMono(CreateNoteRequest::class.java).map { it.copy(user = principal.id) } }
-      .flatMap { fromFuture(ask(processor, { rt -> it.toCommand(rt) }, timeout, scheduler).toCompletableFuture()) }
+      .flatMap { fromCompletionStage(ask(processor, { rt -> it.toCommand(rt) }, timeout, scheduler)) }
       .flatMap {
         if (it.isSuccess) {
-          ServerResponse.created(URI.create("/api/note/${it.value.id}")).bodyValue(it.value)
+          ServerResponse.created(uri("/api/note/${it.value.id}")).bodyValue(it.value)
         } else {
-          ServerResponse.badRequest().build()
+          badRequest
         }
-      }.switchIfEmpty(ServerResponse.status(401).build())
+      }.switchIfEmpty(unauthorized)
+
+  fun updateNote(req: ServerRequest): Mono<ServerResponse> =
+    loggedin(req)
+      .flatMap { principal -> req.bodyToMono(UpdateNoteRequest::class.java).map { it.copy(user = principal.id) } }
+      .flatMap { fromCompletionStage(ask(processor, { rt -> it.toCommand(rt) }, timeout, scheduler)) }
+      .flatMap { if (it.isSuccess) ok.bodyValue(it.value) else badRequest }
+      .switchIfEmpty(unauthorized)
+
+  fun deleteNote(req: ServerRequest): Mono<ServerResponse> =
+    loggedin(req).zipWith(req.pathAsUUID("id").mapNotNull { reader.findNote(it) })
+      .filter { tup -> tup?.t2?.user != null && tup.t2.user == tup.t1.id }
+      .flatMap { tup -> fromCompletionStage(ask(processor, { DeleteNote(tup.t1.id, tup.t2.id, it) }, timeout, scheduler)) }
+      .flatMap { if(it.isSuccess) ok.build() else badRequest }
+      .switchIfEmpty(unauthorized)
 
   fun findNote(req: ServerRequest): Mono<ServerResponse> =
     req.pathAsUUID("id")
-      .flatMap { id -> Mono.justOrEmpty(reader.findNote(id)) }
-      .flatMap { ServerResponse.ok().bodyValue(it) }
-      .switchIfEmpty(ServerResponse.notFound().build())
+      .flatMap { justOrEmpty(reader.findNote(it)) }
+      .flatMap { ok.bodyValue(it) }
+      .switchIfEmpty(notFound)
 
   private fun loggedin(req: ServerRequest): Mono<User> =
-    Mono.justOrEmpty(req.headers().firstHeader("X-Auth")).mapNotNull { reader.loggedin(it) }
+    justOrEmpty(req.headers().firstHeader("X-Auth")).mapNotNull { reader.loggedin(it) }
 }
 
 class UserReader(private val state: UserState) {
-  fun find(a: Any): Mono<UserResponse> = Mono.justOrEmpty(state.find(a)?.toResponse())
-  fun login(u: String, p: String): Mono<String> = Mono.justOrEmpty(state.login(u, p))
+  fun find(a: Any): Mono<User> = justOrEmpty(state.find(a))
+  fun login(u: String, p: String): Mono<String> = justOrEmpty(state.login(u, p))
   fun loggedin(s: String): User? = state.loggedin(s)
   fun findAll(): List<UserResponse> = state.findAll().map { it.toResponse() }
   fun findNote(id: UUID): Note? = state.findNote(id)

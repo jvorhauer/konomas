@@ -3,17 +3,13 @@ package blog
 import akka.actor.testkit.typed.javadsl.TestKitJunitResource
 import akka.pattern.StatusReply
 import blog.Constants.born
-import blog.Constants.email
-import blog.Constants.password
-import blog.Constants.name
 import blog.model.RegisterUser
 import blog.model.RegisterUserRequest
-import blog.model.UserEvent
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.valiktor.ConstraintViolationException
 import java.time.LocalDate
-import java.util.UUID
+import java.util.*
 
 class UserTests {
 
@@ -49,13 +45,5 @@ class UserTests {
     assertThat(e.id).isNotNull
     assertThat(e.joined).isBeforeOrEqualTo(LocalDate.now())
     assertThat(e.password).isEqualTo(RegisterUser.hash(c.password))
-  }
-
-  @Test
-  fun `event to forward`() {
-    val c = UserEvent(UUID.randomUUID(), email, name, password, born)
-    val f = c.toForward()
-    assertThat(f.id).isEqualTo(c.id)
-    assertThat(f.email).isEqualTo(c.email)
   }
 }

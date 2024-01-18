@@ -7,6 +7,12 @@
 
 An Event Sourced version of the backend for the Novi Blog.
 
+## Vision
+
+To prove that event sourcing works for a well-known project, [Noviaal](https://github.com/jvorhauer/noviaal), I have build this. 
+Event sourcing fits really well, as the users of NoviBlog can update notes and can add comments, etc. to any existing note. 
+Being able to understand the sequence of events that leads/led to a certain state is gold when something does not work as intended.
+
 ## Tech Stack
 
 * Kotlin (tired of Java, still contemplating Scala though)
@@ -78,5 +84,20 @@ soft-linked (ln -s) to `/etc/nginx/sites-enabled`. A redirector to the https sit
 ```shell
 kubectl port-forward -n kube-system service/kubernetes-dashboard 8443:443
 ```
-
 This way the dashboard is safely and only locally available via [dashboard](https://localhost:8443/#/workloads?namespace=default)
+
+## Roadmap
+
+### Improve resilience
+
+In order to provide more resilience for crashing k8s nodes and other anomalies, the use of Akka Cluster presents itself.
+
+However, Akka Cluster is rather an extra layer of complication that I would like to postpone to when such resilience is really 
+useful. In the meantime, rolling updates provided by the current deployment take care of downtime during normal rollouts.
+
+### Improve architecture
+
+My intention is to rewrite NoviBlog in Scala with Akka Cluster and Akka http instead of Spring WebFlux. Although Spring Boot with WebFlux
+is working really well, the switch between Actors and Reactor takes some energy and time. Scala + Akka is one paradigm that works
+as well as Spring, but without context switching overhead. The name of this product would probably change a bit then, as well as the
+vision.

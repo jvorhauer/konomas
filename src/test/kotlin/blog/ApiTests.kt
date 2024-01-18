@@ -16,8 +16,7 @@ import java.util.UUID
 
 class ApiTests {
   private val testKit = TestKitJunitResource(
-    """akka.actor.provider = "cluster"
-       akka.persistence.journal.plugin = "akka.persistence.journal.inmem" 
+    """akka.persistence.journal.plugin = "akka.persistence.journal.inmem" 
        akka.persistence.snapshot-store.plugin = "akka.persistence.snapshot-store.local"  
        akka.persistence.snapshot-store.local.dir = "build/snapshot-${UUID.randomUUID()}"  
     """)

@@ -14,17 +14,18 @@ import akka.persistence.typed.javadsl.SignalHandler
 import blog.Command
 import blog.Event
 import blog.model.CreateNote
+import blog.model.DeleteNote
 import blog.model.NoteEvent
 import blog.model.RegisterUser
+import blog.model.UpdateNote
+import blog.model.NoteUpdated
 import blog.model.UserEvent
 import blog.model.UserState
-import org.slf4j.LoggerFactory
 import java.time.Duration
 
 private val onFail = SupervisorStrategy.restartWithBackoff(Duration.ofMillis(200), Duration.ofSeconds(5), 0.1)
 
 class UserBehavior(private val state: UserState, pid: PersistenceId) : EventSourcedBehavior<Command, Event, UserState>(pid, onFail) {
-  private val logger = LoggerFactory.getLogger("UserBehavior")
   override fun emptyState(): UserState = state
   override fun retentionCriteria(): RetentionCriteria = RetentionCriteria.snapshotEvery(100, 5)
 
@@ -32,6 +33,8 @@ class UserBehavior(private val state: UserState, pid: PersistenceId) : EventSour
     .forAnyState()
     .onCommand(RegisterUser::class.java, this::onRegisterUser)
     .onCommand(CreateNote::class.java, this::onCreateNote)
+    .onCommand(UpdateNote::class.java, this::onUpdateNote)
+    .onCommand(DeleteNote::class.java, this::onDeleteNote)
     .build()
 
   private fun onRegisterUser(state: UserState, cmd: RegisterUser): Effect<Event, UserState> =
@@ -41,12 +44,6 @@ class UserBehavior(private val state: UserState, pid: PersistenceId) : EventSour
     else {
       val event = cmd.toEvent()
       Effect().persist(event).thenRun { _: UserState ->
-        // distributed pub sub action to inform the other nodes, but do not send to self (if this is at all possible)
-        // see https://doc.akka.io/docs/akka/current/typed/distributed-data.html#using-the-replicator, but: create child beahvior
-        // and make that child publish the registration fact.
-        //          if (s.recovered) {
-        //          }
-        logger.info("onRegisterUser: ${cmd.email} persisted")
         cmd.replyTo.tell(StatusReply.success(event.toEntity().toResponse()))
       }
     }
@@ -62,10 +59,35 @@ class UserBehavior(private val state: UserState, pid: PersistenceId) : EventSour
       }
     }
 
+  private fun onUpdateNote(state: UserState, cmd: UpdateNote): Effect<Event, UserState> =
+    state.find(cmd.user)?.notes?.find { it.id == cmd.id }.let {
+      if (it == null) Effect().none().thenRun {
+        cmd.rt.tell(StatusReply.error("Note with id ${cmd.id} not found for user with id ${cmd.user}"))
+      } else {
+        val event = cmd.toEvent(it)
+        Effect().persist(event).thenRun { _: UserState ->
+          cmd.rt.tell(StatusReply.success(event.toEntity().toResponse()))
+        }
+      }
+    }
+
+  private fun onDeleteNote(state: UserState, cmd: DeleteNote): Effect<Event, UserState> =
+    state.find(cmd.user)?.notes?.find { it.id == cmd.id }.let {
+      if (it == null) Effect().none().thenRun {
+        cmd.rt.tell(StatusReply.error("Note with id ${cmd.id} not found for user with id ${cmd.user}"))
+      } else {
+        val event = cmd.toEvent()
+        Effect().persist(event).thenRun { _: UserState ->
+          cmd.rt.tell(StatusReply.success(event.toResponse()))
+        }
+      }
+    }
+
   override fun eventHandler(): EventHandler<UserState, Event> = newEventHandlerBuilder()
     .forAnyState()
     .onEvent(UserEvent::class.java) { event -> state.save(event.toEntity()) }
     .onEvent(NoteEvent::class.java) { event -> state.addNote(event.toEntity()) }
+    .onEvent(NoteUpdated::class.java) { event -> state.updateNote(event.toEntity()) }
     .build()
 
   override fun signalHandler(): SignalHandler<UserState> =
