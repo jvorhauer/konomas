@@ -2,7 +2,7 @@ import net.researchgate.release.ReleaseExtension
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
-  id("org.springframework.boot") version "3.2.1"
+  id("org.springframework.boot") version "3.2.2"
   id("io.spring.dependency-management") version "1.1.4"
   kotlin("jvm") version "1.9.22"
   kotlin("plugin.spring") version "1.9.22"
@@ -16,11 +16,14 @@ java.sourceCompatibility = JavaVersion.VERSION_21
 repositories {
   mavenLocal()
   mavenCentral()
+  maven {
+    url = uri("https://repo.akka.io/maven")
+  }
 }
 
 dependencies {
 
-  implementation(platform("com.typesafe.akka:akka-bom_2.13:2.8.5"))
+  implementation(platform("com.typesafe.akka:akka-bom_2.13:2.9.1"))
 
   implementation("org.springframework.boot:spring-boot-starter-webflux")
   implementation("org.springframework.boot:spring-boot-starter-actuator")
@@ -46,7 +49,7 @@ dependencies {
 
   testImplementation("org.springframework.boot:spring-boot-starter-test")
   testImplementation("io.projectreactor:reactor-test:3.6.2")
-  testImplementation("com.typesafe.akka:akka-persistence-testkit_2.13:2.8.5")
+  testImplementation("com.typesafe.akka:akka-persistence-testkit_2.13:2.9.1")
   testImplementation("junit:junit:4.13.2")
 }
 
@@ -54,7 +57,7 @@ tasks.withType<KotlinCompile> {
   kotlinOptions {
     freeCompilerArgs = listOf("-Xjsr305=strict")
     jvmTarget = "21"
-    languageVersion = "2.0"
+    languageVersion = "1.9"
   }
 }
 
