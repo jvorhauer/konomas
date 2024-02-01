@@ -2,17 +2,17 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
-    app: noviblog
-  name: noviblog
+    app: konomas
+  name: konomas
 spec:
   template:
     metadata:
       labels:
-        app: noviblog
+        app: konomas
     spec:
       containers:
-        - name: noviblog
-          image: ghcr.io/jvorhauer/noviblog:latest
+        - name: konomas
+          image: ghcr.io/jvorhauer/konomas:latest
           env:
             - name: ASTRA_USERNAME
               valueFrom:
@@ -52,7 +52,7 @@ spec:
             periodSeconds: 5
           imagePullPolicy: Always
           ports:
-            - name: noviblog
+            - name: konomas
               containerPort: 8080
               protocol: TCP
           volumeMounts:
@@ -67,7 +67,7 @@ spec:
             secretName: astra-scb
   selector:
     matchLabels:
-      app: noviblog
+      app: konomas
   strategy:
     type: RollingUpdate
     rollingUpdate:

@@ -1,12 +1,12 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: noviblog
+  name: konomas
   labels:
-    app: noviblog
+    app: konomas
 spec:
   ports:
     - port: 8080
   type: NodePort
   selector:
-    app: noviblog
+    app: konomas

@@ -14,4 +14,4 @@ pluginManagement {
   }
 }
 
-rootProject.name = "noviblog"
+rootProject.name = "konomas"

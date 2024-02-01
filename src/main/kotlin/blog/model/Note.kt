@@ -1,78 +1,66 @@
 package blog.model
 
-import blog.Command
-import blog.Entity
-import blog.Event
-import blog.ReplyTo
-import blog.Response
+import akka.actor.typed.ActorRef
+import akka.pattern.StatusReply
+import io.hypersistence.tsid.TSID
+import jakarta.validation.ConstraintViolation
 import org.owasp.encoder.Encode
-import org.valiktor.functions.isNotBlank
-import org.valiktor.validate
 import java.time.LocalDateTime
-import java.util.UUID
+import java.time.ZoneId
 
-fun now() = LocalDateTime.now()
-
-data class CreateNoteRequest(val user: UUID, val title: String, val body: String) {
-  init {
-    validate(this) {
-      validate(CreateNoteRequest::title).isNotBlank()
-      validate(CreateNoteRequest::body).isNotBlank()
-    }
-  }
-  fun toCommand(replyTo: ReplyTo) = CreateNote(user, title = title, body = body, replyTo = replyTo)
+data class CreateNoteRequest(val user: Long, val title: String, val body: String) {
+  fun validate(): Set<ConstraintViolation<CreateNoteRequest>> = Validator.validate(this)
+  fun toCommand(replyTo: ActorRef<StatusReply<NoteResponse>>) = CreateNote(user.toTSID(), title, body, replyTo)
 }
 
-data class UpdateNoteRequest(val user: UUID, val id: UUID, val title: String, val body: String) {
-  init {
-    validate(this) {
-      validate(UpdateNoteRequest::title).isNotBlank()
-      validate(UpdateNoteRequest::body).isNotBlank()
-    }
-  }
-  fun toCommand(rt: ReplyTo) = UpdateNote(user, id, title, body, rt)
+data class UpdateNoteRequest(val user: TSID, val id: TSID, val title: String?, val body: String?) {
+  fun validate(): Set<ConstraintViolation<UpdateNoteRequest>> = Validator.validate(this)
+  fun toCommand(rt: ActorRef<StatusReply<NoteResponse>>) = UpdateNote(user, id, title, body, rt)
 }
 
 data class CreateNote(
-  val user: UUID,
-  val id: UUID = UUID.randomUUID(),
-  val created: LocalDateTime = now(),
+  val user: TSID,
   val title: String,
   val body: String,
-  val replyTo: ReplyTo
+  val replyTo: ActorRef<StatusReply<NoteResponse>>,
+  val id: TSID = nextId()
 ) : Command {
-  fun toEvent() = NoteEvent(id, user, created, Encode.forHtml(title), Encode.forHtml(body))
+  fun toEvent() = NoteEvent(id, user, Encode.forHtml(title), Encode.forHtml(body))
 }
 
-data class UpdateNote(val user: UUID, val id: UUID, val title: String, val body: String, val rt: ReplyTo): Command {
-  fun toEvent(note: Note) = NoteUpdated(id, user, note.created, title, body)
+data class UpdateNote(val user: TSID, val id: TSID, val title: String?, val body: String?, val replyTo: ActorRef<StatusReply<NoteResponse>>): Command {
+  fun toEvent() = NoteUpdated(id, user, title, body)
 }
 
-data class DeleteNote(val user: UUID, val id: UUID, val rt: ReplyTo): Command {
+data class DeleteNote(val user: TSID, val id: TSID, val rt: ActorRef<StatusReply<NoteDeletedResponse>>): Command {
   fun toEvent() = NoteDeleted(id, user)
 }
 
-data class NoteEvent(val id: UUID, val user: UUID, val created: LocalDateTime, val title: String, val body: String) : Event {
-  fun toEntity() = Note(id, user, created, title, body)
+data class NoteEvent(val id: TSID, val user: TSID, val title: String, val body: String) : Event {
+  fun toEntity() = Note(id, user, title, body)
 }
 
-data class NoteUpdated(val id: UUID, val user: UUID, val created: LocalDateTime, val title: String, val body: String): Event {
-  fun toEntity() = Note(id, user, created, title, body)
+data class NoteUpdated(val id: TSID, val user: TSID, val title: String?, val body: String?): Event
+
+data class NoteDeleted(val id: TSID, val user: TSID): Event {
+  fun toResponse() = NoteDeletedResponse(id.toLong())
 }
 
-data class NoteDeleted(val id: UUID, val user: UUID): Event {
-  fun toResponse() = NoteDeletedResponse(id)
-}
-
-data class Note(override val id: UUID, val user: UUID, val created: LocalDateTime, val title: String, val body: String): Entity {
-  fun toResponse() = NoteResponse(id, created, title, body)
+data class Note(
+  override val id: TSID,
+  val user: TSID,
+  val title: String,
+  val body: String
+): Entity {
+  fun update(nu: NoteUpdated): Note = this.copy(title = nu.title ?: this.title, body = nu.body ?: this.body)
+  fun toResponse() = NoteResponse(id.toLong(), LocalDateTime.ofInstant(id.instant, ZoneId.of("CET")), title, body)
 }
 
 data class NoteResponse(
-  override val id: UUID,
+  override val id: Long,
   val created: LocalDateTime,
   val title: String,
   val body: String
 ) : Response
 
-data class NoteDeletedResponse(override val id: UUID): Response
+data class NoteDeletedResponse(override val id: Long): Response
