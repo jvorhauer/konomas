@@ -16,7 +16,7 @@ jobs:
       - name: Build with Gradle
         uses: gradle/gradle-build-action@v2
         with:
-          arguments: build
+          arguments: build jacocoTestReport
           gradle-version: 8.5
       - name: Upload coverage to CodeCov
         uses: codecov/codecov-action@v3

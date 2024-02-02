@@ -1,4 +1,5 @@
 import net.researchgate.release.ReleaseExtension
+import org.gradle.internal.impldep.org.bouncycastle.cms.RecipientId.password
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
@@ -8,6 +9,7 @@ plugins {
   kotlin("plugin.spring") version "1.9.22"
   id("com.google.cloud.tools.jib") version "3.4.0"
   id("net.researchgate.release") version "3.0.2"
+  jacoco
 }
 
 group = "nl.vorhauer"
@@ -64,8 +66,20 @@ tasks.withType<KotlinCompile> {
   }
 }
 
+jacoco {
+  toolVersion = "0.8.9"
+}
+
+tasks.jacocoTestReport {
+  reports {
+    xml.required = true
+    csv.required = false
+  }
+}
+
 tasks.withType<Test> {
   useJUnitPlatform()
+  finalizedBy("jacocoTestReport")
 }
 
 jib {
