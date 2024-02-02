@@ -43,7 +43,7 @@ dependencies {
   implementation("org.scala-lang:scala-library:2.13.12")
   implementation("io.hypersistence:hypersistence-tsid:2.1.1")
 
-  implementation("io.netty:netty-all:4.1.105.Final")
+  implementation("io.netty:netty-all:4.1.106.Final")
   implementation("org.hibernate:hibernate-validator:8.0.1.Final")
   implementation("org.glassfish.expressly:expressly:5.0.0")
   implementation("org.owasp.encoder:encoder:1.2.3")

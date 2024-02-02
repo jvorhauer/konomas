@@ -16,7 +16,7 @@ data class RegisterUserRequest(
   val born: LocalDate,
 ) {
   fun validate(): Set<ConstraintViolation<RegisterUserRequest>> = Validator.validate(this)
-  fun toCommand(replyTo: ActorRef<StatusReply<UserResponse>>): RegisterUser = RegisterUser(this, replyTo)
+  fun toCommand(replyTo: ActorRef<StatusReply<UserResponse>>): CreateUser = CreateUser(this, replyTo)
 }
 
 data class LoginRequest(val username: String, val password: String) {
@@ -25,7 +25,7 @@ data class LoginRequest(val username: String, val password: String) {
 
 // Commands
 
-data class RegisterUser(
+data class CreateUser(
   val id: TSID = nextId(),
   val email: String,
   val name: String,
@@ -34,7 +34,7 @@ data class RegisterUser(
   val replyTo: ActorRef<StatusReply<UserResponse>>
 ) : Command {
   constructor(rur: RegisterUserRequest, replyTo: ActorRef<StatusReply<UserResponse>>) : this(nextId(), rur.email, rur.name, rur.password, rur.born, replyTo)
-  fun toEvent() = UserRegistered(id, Encode.forHtml(email), Encode.forHtml(name), Hasher.hash(password), born)
+  fun toEvent() = UserCreated(id, Encode.forHtml(email), Encode.forHtml(name), Hasher.hash(password), born)
 }
 
 data class Login(val username: String, val password: String, val replyTo: ActorRef<StatusReply<OAuthToken>>): Command {
@@ -43,7 +43,7 @@ data class Login(val username: String, val password: String, val replyTo: ActorR
 
 // Events
 
-data class UserRegistered(
+data class UserCreated(
   val id: TSID,
   val email: String,
   val name: String,
@@ -72,7 +72,7 @@ data class User(
   val born: LocalDate,
 ): Entity {
   fun toResponse(reader: Reader): UserResponse = UserResponse(
-    id.toLong(),
+    id.toString(),
     email,
     name,
     DTF.format(born),
@@ -83,13 +83,13 @@ data class User(
 }
 
 data class Session(val token: String, val user: User, var started: Long = System.currentTimeMillis()): CborSerializable {
-  fun toToken() = OAuthToken(token, user.id.toLong())
+  fun toToken() = OAuthToken(token, user.id.toString())
 }
 
 // Responses
 
 data class UserResponse(
-  override val id: Long,
+  override val id: String,
   val email: String,
   val name: String,
   val born: String,
@@ -98,4 +98,4 @@ data class UserResponse(
   val tasks: List<TaskResponse>
 ) : Response
 
-data class OAuthToken(val access_token: String, override val id: Long, val token_type: String = "bearer", val expires_in: Int = 7200) : Response
+data class OAuthToken(val access_token: String, override val id: String, val token_type: String = "bearer", val expires_in: Int = 7200) : Response

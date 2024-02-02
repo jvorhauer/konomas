@@ -1,5 +1,6 @@
 package blog.model
 
+import akka.Done
 import akka.actor.typed.ActorRef
 import akka.pattern.StatusReply
 import io.hypersistence.tsid.TSID
@@ -26,11 +27,11 @@ data class Task(
     due = tu.due ?: this.due,
     status = tu.status ?: this.status
   )
-  fun toResponse() = TaskResponse(id.toLong(), title, body, due, status.name)
+  fun toResponse() = TaskResponse(id.toString(), title, body, due, status.name)
 }
 
 data class CreateTaskRequest(
-  val user: TSID,
+  val user: String,
   val title: String,
   val body: String,
   val due: LocalDateTime
@@ -40,14 +41,18 @@ data class CreateTaskRequest(
 }
 
 data class UpdateTaskRequest(
-  val user: TSID,
-  val id: TSID,
+  val user: String,
+  val id: String,
   val title: String?,
   val body: String?,
   val due: LocalDateTime?,
   val status: TaskStatus?
 ) {
-  fun toCommand(replyTo: ActorRef<StatusReply<TaskResponse>>) = UpdateTask(user, id, title, body, due, status, replyTo)
+  fun toCommand(replyTo: ActorRef<StatusReply<TaskResponse>>) = UpdateTask(user.toTSID(), id.toTSID(), title, body, due, status, replyTo)
+}
+
+data class DeleteTaskRequest(val id: String) {
+  fun toCommand(replyTo: ActorRef<StatusReply<Done>>) = DeleteTask(id.toTSID(), replyTo)
 }
 
 data class CreateTask(
@@ -73,6 +78,10 @@ data class UpdateTask(
   fun toEvent() = TaskUpdated(user, id, title, body, due, status)
 }
 
+data class DeleteTask(val id: TSID, val replyTo: ActorRef<StatusReply<Done>>): Command {
+  fun toEvent() = TaskDeleted(id)
+}
+
 data class TaskCreated(
   val id: TSID,
   val user: TSID,
@@ -92,8 +101,10 @@ data class TaskUpdated(
   val status: TaskStatus?,
 ) : Event
 
+data class TaskDeleted(val id: TSID): Event
+
 data class TaskResponse(
-  override val id: Long,
+  override val id: String,
   val title: String,
   val body: String,
   val due: LocalDateTime,

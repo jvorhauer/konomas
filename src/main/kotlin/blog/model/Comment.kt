@@ -12,17 +12,18 @@ data class Comment(
   val text: String,
   val score: Int
 ) {
-  fun toResponse() = CommentResponse(id.toLong(), user.toLong(), owner.toLong(), parent?.toLong(), text, score)
+  fun toResponse() = CommentResponse(id.toString(), user.toString(), owner.toString(), parent?.toString(), text, score)
 }
 
 data class CreateCommentRequest(
-  val user: Long,
-  val owner: Long,
-  val parent: Long?,
+  val user: String,
+  val owner: String,
+  val parent: String?,
   val text: String,
   val score: Int = 0
 ) {
-  fun toCommand(replyTo: ActorRef<StatusReply<CommentResponse>>) = CreateComment(user.toTSID(), owner.toTSID(), parent.toTSID(), text, score, replyTo)
+  fun validate() = Validator.validate(this)
+  fun toCommand(replyTo: ActorRef<StatusReply<CommentResponse>>) = CreateComment(user.toTSID(), owner.toTSID(), parent?.toTSID(), text, score, replyTo)
 }
 
 data class CreateComment(
@@ -49,10 +50,10 @@ data class CommentCreated(
 }
 
 data class CommentResponse(
-  override val id: Long,
-  val user: Long,
-  val owner: Long, // Note or Task
-  val parent: Long?,
+  override val id: String,
+  val user: String,
+  val owner: String, // Note or Task
+  val parent: String?,
   val text: String,
   val score: Int
 ): Response

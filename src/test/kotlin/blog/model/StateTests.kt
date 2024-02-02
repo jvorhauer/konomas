@@ -95,4 +95,19 @@ class StateTests {
     assertThat(state3.findTaskById(task.id)).isNotNull
     assertThat(state3.findTasksForUser(user.id)).hasSize(1)
   }
+
+  @Test
+  fun `new comment and update`() {
+    val state = State()
+    val user = User(nextId(), "test@tester.nl", "Tester", Hasher.hash("Welkom123!"), LocalDate.now().minusYears(42))
+    val state2 = state.save(user)
+    val note = Note(nextId(), user.id, "Test", "Tasking, 1.. 2..")
+    val state3 = state2.save(note)
+    assertThat(state3.noteCount()).isEqualTo(1)
+    val c = Comment(nextId(), user.id, note.id, null, "tekst", 5)
+    val state4 = state3.save(c)
+    assertThat(state4.findComment(c.id)).isNotNull
+    assertThat(state4.findCommentsForUser(user.id)).isNotEmpty
+    assertThat(state4.findCommentsForNote(note.id)).isNotEmpty
+  }
 }

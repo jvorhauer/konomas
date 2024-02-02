@@ -7,9 +7,11 @@ import akka.actor.typed.Scheduler
 import akka.actor.typed.javadsl.AskPattern.ask
 import akka.actor.typed.javadsl.Behaviors
 import blog.model.Command
+import blog.model.CreateCommentRequest
 import blog.model.CreateNoteRequest
 import blog.model.CreateTaskRequest
 import blog.model.DeleteNote
+import blog.model.DeleteTask
 import blog.model.LoginRequest
 import blog.model.RegisterUserRequest
 import blog.model.UpdateNoteRequest
@@ -34,11 +36,13 @@ import reactor.core.publisher.Mono.justOrEmpty
 import reactor.kotlin.core.publisher.toFlux
 import java.net.URI
 import java.time.Duration
+import java.util.Locale
 
 @SpringBootApplication
 class Application
 
 fun main() {
+  locale()
   ActorSystem.create(Server.create(), "system")
 }
 
@@ -59,7 +63,7 @@ fun beans(processor: ActorRef<Command>, system: ActorSystem<Void>, reader: Reade
 }
 
 fun ServerRequest.monoPathVar(s: String): Mono<String> = justOrEmpty(s).mapNotNull { runCatching { this.pathVariable(it) }.getOrNull() }
-fun ServerRequest.pathAsTSID(s: String): Mono<TSID> = this.monoPathVar(s).map { it.toLong() }.map { it.toTSID() }
+fun ServerRequest.pathAsTSID(s: String): Mono<TSID> = this.monoPathVar(s).map { it.toTSID() }
 
 fun routes(handler: ApiHandler): RouterFunction<ServerResponse> =
   router {
@@ -73,6 +77,7 @@ fun routes(handler: ApiHandler): RouterFunction<ServerResponse> =
       GET("/note/{id}", handler::findNote)
       PUT("/note", handler::updateNote)
       DELETE("/note/{id}", handler::deleteNote)
+      POST("/note/{id}/comment", handler::comment)
 
       GET("/users") { _ -> handler.findAll() }
       GET("/user/id/{id}", handler::findById)
@@ -80,6 +85,7 @@ fun routes(handler: ApiHandler): RouterFunction<ServerResponse> =
 
       POST("/tasks", handler::createTask)
       PUT("/tasks", handler::updateTask)
+      DELETE("/tasks/{id}", handler::deleteTask)
     }
   }
 
@@ -108,7 +114,7 @@ class ApiHandler(private val scheduler: Scheduler, private val processor: ActorR
       .switchIfEmpty(forbidden)
 
   fun findById(req: ServerRequest): Mono<ServerResponse> = req.pathAsTSID("id")
-      .flatMap { justOrEmpty(reader.findUserById(it)) }
+      .flatMap { justOrEmpty(reader.findUser(it)) }
       .map { it.toResponse(reader) }
       .flatMap { ServerResponse.ok().bodyValue(it) }
       .switchIfEmpty(notFound)
@@ -122,7 +128,7 @@ class ApiHandler(private val scheduler: Scheduler, private val processor: ActorR
   fun findAll(): Mono<ServerResponse> = ok.contentType(MediaType.APPLICATION_JSON).body(reader.allUsers().toFlux(), UserResponse::class.java)
 
   fun createNote(req: ServerRequest): Mono<ServerResponse> = loggedin(req)
-      .flatMap { principal -> req.bodyToMono(CreateNoteRequest::class.java).map { it.copy(user = principal.id.toLong()) } }
+      .flatMap { principal -> req.bodyToMono(CreateNoteRequest::class.java).map { it.copy(user = principal.id.toString()) } }
       .flatMap { fromCompletionStage(ask(processor, { rt -> it.toCommand(rt) }, timeout, scheduler)) }
       .flatMap {
         if (it.isSuccess) {
@@ -133,7 +139,7 @@ class ApiHandler(private val scheduler: Scheduler, private val processor: ActorR
       }.switchIfEmpty(unauthorized)
 
   fun updateNote(req: ServerRequest): Mono<ServerResponse> = loggedin(req)
-      .flatMap { principal -> req.bodyToMono(UpdateNoteRequest::class.java).map { it.copy(user = principal.id) } }
+      .flatMap { principal -> req.bodyToMono(UpdateNoteRequest::class.java).map { it.copy(user = principal.id.toString()) } }
       .flatMap { fromCompletionStage(ask(processor, { rt -> it.toCommand(rt) }, timeout, scheduler)) }
       .flatMap { if (it.isSuccess) ok.bodyValue(it.value) else badreq(it.error.message) }
       .switchIfEmpty(unauthorized)
@@ -148,17 +154,34 @@ class ApiHandler(private val scheduler: Scheduler, private val processor: ActorR
   fun findNote(req: ServerRequest): Mono<ServerResponse> =
     req.pathAsTSID("id")
       .flatMap { justOrEmpty(reader.findNote(it)) }
-      .flatMap { ok.bodyValue(it) }
+      .flatMap { ok.bodyValue(it.toResponse()) }
       .switchIfEmpty(notFound)
 
   fun createTask(req: ServerRequest): Mono<ServerResponse> = loggedin(req)
-    .flatMap { principal -> req.bodyToMono(CreateTaskRequest::class.java).map { it.copy(user = principal.id) } }
+    .flatMap { principal -> req.bodyToMono(CreateTaskRequest::class.java).map { it.copy(user = principal.id.toString()) } }
     .flatMap { ServerResponse.unprocessableEntity().build() }
 
   fun updateTask(req: ServerRequest): Mono<ServerResponse> = loggedin(req)
-    .flatMap { principal -> req.bodyToMono(UpdateTaskRequest::class.java).map { it.copy(user = principal.id) } }
-    .flatMap { ServerResponse.unprocessableEntity().build() }
+    .flatMap { principal -> req.bodyToMono(UpdateTaskRequest::class.java).map { it.copy(user = principal.id.toString()) } }
+    .flatMap { fromCompletionStage(ask(processor, { rt -> it.toCommand(rt) }, timeout, scheduler)) }
+    .flatMap { if(it.isSuccess) ok.build() else badRequest }
+    .switchIfEmpty(unauthorized)
+
+  fun deleteTask(req: ServerRequest): Mono<ServerResponse> = loggedin(req)
+    .zipWith(req.pathAsTSID("id").mapNotNull { reader.findTask(it) })
+    .filter { tup -> tup?.t2?.user != null && tup.t2.user == tup.t1.id }
+    .flatMap { tup -> fromCompletionStage(ask(processor, { DeleteTask(tup.t1.id, it) }, timeout, scheduler)) }
+    .flatMap { if(it.isSuccess) ok.build() else badRequest }
+    .switchIfEmpty(unauthorized)
 
   private fun loggedin(req: ServerRequest): Mono<User> =
     justOrEmpty(req.headers().firstHeader("Authorization")).mapNotNull { reader.loggedin(it) }
+
+  fun comment(req: ServerRequest): Mono<ServerResponse> = loggedin(req)
+    .flatMap { principal -> req.bodyToMono(CreateCommentRequest::class.java).map { it.copy(user = principal.id.toString()) } }
+    .flatMap { fromCompletionStage(ask(processor, { rt -> it.toCommand(rt) }, timeout, scheduler)) }
+    .flatMap { if(it.isSuccess) ok.build() else badRequest }
+    .switchIfEmpty(unauthorized)
 }
+
+fun locale(): Unit = Locale.setDefault(Locale.of("nl", "NL"))

@@ -1,5 +1,6 @@
 package blog.model
 
+import akka.Done
 import akka.actor.testkit.typed.javadsl.TestKitJunitResource
 import akka.pattern.StatusReply
 import io.hypersistence.tsid.TSID
@@ -16,13 +17,13 @@ class NoteTests {
     """
   )
   private val probeNoteRes = testKit.createTestProbe<StatusReply<NoteResponse>>().ref
-  private val probeNoteDel = testKit.createTestProbe<StatusReply<NoteDeletedResponse>>().ref
+  private val probeNoteDel = testKit.createTestProbe<StatusReply<Done>>().ref
 
   private val userId: TSID = nextId()
 
   @Test
   fun `create request to command to event to entity`() {
-    val cnr = CreateNoteRequest(userId.toLong(), "title", "body")
+    val cnr = CreateNoteRequest(userId.toString(), "title", "body")
     assertThat(cnr.validate()).isEmpty()
 
     val cn = cnr.toCommand(probeNoteRes)
@@ -50,7 +51,7 @@ class NoteTests {
 
   @Test
   fun `update request to command to event`() {
-    val run = UpdateNoteRequest(userId, nextId(), "title", "body")
+    val run = UpdateNoteRequest(userId.toString(), nextId().toString(), "title", "body")
     assertThat(run.validate()).isEmpty()
 
     val un: UpdateNote = run.toCommand(probeNoteRes)

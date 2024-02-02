@@ -3,18 +3,18 @@ package blog.model
 import io.hypersistence.tsid.TSID
 
 data class State(
-  private val users: Map<TSID, User> = mapOf(),
-  private val notes: Map<TSID, Note> = mapOf(),
-  private val tasks: Map<TSID, Task> = mapOf(),
+  private val users: Map<TSID, User>      = mapOf(),
+  private val notes: Map<TSID, Note>      = mapOf(),
+  private val tasks: Map<TSID, Task>      = mapOf(),
   private val sesss: Map<String, Session> = mapOf(),
-  private val recovered: Boolean = false
+  private val comms: Map<TSID, Comment>   = mapOf(),
+  private val recovered: Boolean          = false
 ) {
   fun save(u: User)                 : State      = this.copy(users = this.users.minus(u.id).plus(u.id to u))
   fun findUserById(id: TSID)        : User?      = users[id]
   fun findUserByEmail(email: String): User?      = users.values.find { it.email == email }
   fun allUsers()                    : List<User> = users.values.toList()
   fun userCount()                   : Int        = users.size
-  fun delete(u: User)               : State      = this.copy(users = this.users.minus(u.id))
 
   fun save(n: Note)             : State          = this.copy(notes = this.notes.minus(n.id).plus(n.id to n))
   fun findNoteById(id: TSID)    : Note?          = notes[id]
@@ -36,6 +36,12 @@ data class State(
     }
   }
   fun loggedin(session: String): User? = sesss[session]?.user
+
+  fun save(c: Comment): State = this.copy(comms = this.comms.plus(c.id to c))
+  fun findCommentsForUser(id: TSID): List<Comment> = comms.values.filter { it.user == id }
+  fun findCommentsForNote(id: TSID): List<Comment> = comms.values.filter { it.owner == id }
+  fun findComment(id: TSID): Comment? = comms[id]
+  fun commentCount() = comms.size
 
   fun hasRecovered(): State = this.copy(recovered = true)
 }

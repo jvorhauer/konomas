@@ -6,7 +6,6 @@ import java.net.InetAddress
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
 import java.security.SecureRandom
-import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
@@ -17,7 +16,7 @@ interface Entity  : CborSerializable {
   val id: TSID
 }
 interface Response : Serializable {
-  val id: Long
+  val id: String
 }
 
 object Hasher {
@@ -28,8 +27,6 @@ object Hasher {
 
 val DTF: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
 
-fun now(): LocalDateTime = LocalDateTime.now()
-
 private val idFactory = TSID.Factory.builder()
   .withRandom(SecureRandom.getInstance("SHA1PRNG", "SUN"))
   .withNodeBits(8)
@@ -38,5 +35,4 @@ fun nextId(): TSID = idFactory.generate()
 
 fun slugify(s: String): String = s.trim().replace("  ", " ").lowercase().replace("[^ a-z0-9]".toRegex(), "").replace(' ', '-')
 
-fun Long.toTSID(): TSID = TSID.from(this)
-fun Long?.toTSID(): TSID? = if (this != null) TSID.from(this) else null
+fun String.toTSID(): TSID = TSID.from(this)

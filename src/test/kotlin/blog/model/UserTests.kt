@@ -31,7 +31,7 @@ class UserTests {
 
   @Test
   fun `command to event`() {
-    val c = RegisterUser(nextId(), "a@b.c", "a", "p", born, probe)
+    val c = CreateUser(nextId(), "a@b.c", "a", "p", born, probe)
     val e = c.toEvent()
     assertThat(e.email).isEqualTo(c.email)
     assertThat(e.name).isEqualTo(c.name)

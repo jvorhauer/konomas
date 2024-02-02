@@ -20,7 +20,7 @@ class TaskTests {
 
   @Test
   fun `create task request, command, event, entity and response`() {
-    val ctr = CreateTaskRequest(userId, "title", "body", LocalDateTime.now().plusDays(2))
+    val ctr = CreateTaskRequest(userId.toString(), "title", "body", LocalDateTime.now().plusDays(2))
     assertThat(ctr.validate()).isEmpty()
     val ct = ctr.toCommand(userId, probeTaskRes)
     assertThat(ct.id).isNotNull
@@ -44,7 +44,7 @@ class TaskTests {
     assertThat(task.user).isEqualTo(userId).isEqualTo(tc.user).isEqualTo(ct.user)
 
     val res = task.toResponse()
-    assertThat(res.id).isEqualTo(task.id.toLong())
+    assertThat(res.id).isEqualTo(task.id.toString())
     assertThat(res.title).isEqualTo(task.title)
     assertThat(res.body).isEqualTo(task.body)
     assertThat(res.due).isEqualTo(task.due)
@@ -54,7 +54,7 @@ class TaskTests {
   @Test
   fun `update task request, command and event`() {
     val taskId = nextId()
-    val utr = UpdateTaskRequest(userId, taskId, "new title", "new body", LocalDateTime.now().plusDays(3), TaskStatus.DOING)
+    val utr = UpdateTaskRequest(userId.toString(), taskId.toString(), "new title", "new body", LocalDateTime.now().plusDays(3), TaskStatus.DOING)
     val ut = utr.toCommand(probeTaskRes)
     assertThat(ut.id).isEqualTo(taskId)
     assertThat(ut.user).isEqualTo(userId)

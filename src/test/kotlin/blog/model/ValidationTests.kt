@@ -38,25 +38,27 @@ class ValidationTests {
 
   @Test
   fun `create note request`() {
-    val cn = CreateNoteRequest(nextId().toLong(), "Title", "Content")
+    val cn = CreateNoteRequest(nextId().toString(), "Title", "Content")
     assertThat(Validator.validate(cn)).isEmpty()
 
     assertThat(cn.copy(title = "").validate()).hasSize(1)
     assertThat(cn.copy(body = "").validate()).hasSize(1)
     assertThat(cn.copy(title = " ", body = "  ").validate()).hasSize(2)
-
-    val m = mapOf(1 to "Hallo")
-    val n = m.plus(2 to "Bye")
-    println("m: $m, n: $n")
   }
 
   @Test
-  fun `simple array copies`() {
-    val s1 = Simple()
-    val s2 = s1.copy(list = s1.list.plus("Test"))
-    val s3 = s2.copy(other = s2.other.plus(5))
-    println("s3.list: ${s3.list}, s3.other: ${s3.other}")
+  fun `create comment request`() {
+    val userId = nextId()
+    val noteId = nextId()
+    val ccr = CreateCommentRequest(userId.toString(), noteId.toString(), null, "tekst", 4)
+    assertThat(Validator.validate(ccr)).isEmpty()
+    assertThat(ccr.validate()).isEmpty()
+
+    assertThat(ccr.copy(user = "Hello").validate()).hasSize(1)
+    assertThat(ccr.copy(score = 6).validate()).hasSize(1)
+    assertThat(ccr.copy(text = "  ").validate()).hasSize(1)
+    assertThat(ccr.copy(owner = "Goodbye").validate()).hasSize(1)
+    assertThat(ccr.copy(user = "1234567890ABC").validate()).hasSize(1)
+    assertThat(ccr.copy(user = nextId().toString()).validate()).isEmpty()
   }
 }
-
-data class Simple(val list: List<String> = listOf(), val other: List<Int> = listOf())

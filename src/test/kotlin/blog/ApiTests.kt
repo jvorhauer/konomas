@@ -73,7 +73,7 @@ class ApiTests {
 
     val note = client.post("/api/note")
       .header("Authorization", "Bearer ${oAuthToken!!.access_token}")
-      .bodyValue("""{"user":${user!!.id},"title":"Titel","body":"Body tekst"}""")
+      .bodyValue("""{"user":"${user!!.id}","title":"Titel","body":"Body tekst"}""")
       .exchange()
       .expectStatus().isCreated
       .expectBody(NoteResponse::class.java)
@@ -107,16 +107,23 @@ class ApiTests {
 
     val note = client.post("/api/note")
       .header("Authorization", "Bearer ${oAuthToken!!.access_token}")
-      .bodyValue("""{"user":${user!!.id},"title":"Titel","body":"Body tekst"}""")
+      .bodyValue("""{"user":"${user!!.id}","title":"Titel","body":"Body tekst"}""")
       .exchange()
       .expectStatus().isCreated.expectBody(NoteResponse::class.java).returnResult().responseBody
     assertThat(note).isNotNull
 
+    val user2 = client.get("/api/user/id/${user.id}").exchange().expectStatus().isOk.expectBody(UserResponse::class.java).returnResult().responseBody
+    assertThat(user2?.id).isEqualTo(user.id)
+
+    val note2 = client.get("/api/note/${note?.id}").exchange().expectStatus().isOk.expectBody(NoteResponse::class.java).returnResult().responseBody
+    assertThat(note2?.id).isEqualTo(note?.id)
+
     val updated = client.put("/api/note")
       .header("Authorization", "Bearer ${oAuthToken.access_token}")
-      .bodyValue("""{"user":${user.id},"id":${note!!.id},"title":"Nieuwe titel","body":"Nieuwe body tekst"}""")
+      .bodyValue("""{"user":"${user.id}","id":"${note?.id}","title":"Nieuwe titel","body":"Nieuwe body tekst"}""")
       .exchange()
-      .expectStatus().isOk.expectBody(NoteResponse::class.java).returnResult().responseBody
+      .expectStatus().isOk
+      .expectBody(NoteResponse::class.java).returnResult().responseBody
     assertThat(updated).isNotNull
     assertThat(updated!!.title).isEqualTo("Nieuwe titel")
   }
