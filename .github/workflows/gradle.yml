@@ -4,6 +4,10 @@ permissions:
   contents: read
 jobs:
   build:
+    env:
+      KONOMAS_JWT_SECRET: ${{ secrets.KONOMAS_JWT_SECRET }}
+      KONOMAS_SENTRY_DSN: ${{ secrets.KONOMAS_SENTRY_DSN }}
+      KONOMAS_SENTRY_TOKEN: ${{ secrets.KONOMAS_SENTRY_TOKEN }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -13,11 +17,12 @@ jobs:
         with:
           java-version: '21'
           distribution: 'temurin'
+          check-latest: true
       - name: Build with Gradle
         uses: gradle/gradle-build-action@v2
         with:
           arguments: build jacocoTestReport
-          gradle-version: 8.5
+          gradle-version: 8.6
       - name: Upload coverage to CodeCov
         uses: codecov/codecov-action@v3
         with:

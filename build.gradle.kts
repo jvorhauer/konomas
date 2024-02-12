@@ -154,5 +154,3 @@ sentry {
   projectName = "konomas"
   authToken = System.getenv("KONOMAS_SENTRY_TOKEN")
 }
-
-// SENTRY_AUTH_TOKEN=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
