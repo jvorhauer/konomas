@@ -1,0 +1,55 @@
+### register-jurjen
+POST {{host}}/api/users
+Content-Type: application/json
+Accept: application/json
+
+{"email": "jurjen@vorhauer.nl", "name": "Jurjen", "password": "password"}
+
+### get-all-users
+GET {{host}}/api/users
+
+### get-one-user
+GET {{host}}/api/users/543382068392136681
+
+### login-jurjen
+POST {{host}}/api/login
+Content-Type: application/json
+
+{"username": "jurjen@vorhauer.nl", "password": "password"}
+
+> {% client.global.set("authorized", response.body.token); %}
+
+### get-protected
+GET {{host}}/api/test
+Authorization: Bearer {{authorized}}
+
+### post-new-note
+POST {{host}}/api/note
+Content-Type: application/json
+Authorization: Bearer {{authorized}}
+
+{
+  "user": "39260243-6305-4898-b03a-6ce880894931",
+  "title": "Jurjen's second Note",
+  "body": "Note taking in its simplest form :-)"
+}
+
+### post-new-task
+POST {{host}}/api/tasks
+Content-Type: application/json
+Authorization: Bearer {{authorized}}
+
+{
+  "title": "Make Vault story",
+  "body": "In order to deploy to production, we need to store secrets in the Vault",
+  "due": "2024-03-01T09:00:00"
+}
+
+### get-liveness
+GET {{host}}/info/alive
+
+### get-readiness
+GET {{host}}/info/ready
+
+### get-counts
+GET {{host}}/info/counts

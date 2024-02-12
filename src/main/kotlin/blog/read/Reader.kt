@@ -1,56 +1,75 @@
 package blog.read
 
-import blog.model.Comment
-import blog.model.CommentCreated
+import blog.model.Counts
 import blog.model.Event
-import blog.model.LoggedIn
 import blog.model.Note
-import blog.model.NoteDeleted
 import blog.model.NoteCreated
+import blog.model.NoteDeleted
 import blog.model.NoteUpdated
 import blog.model.Task
 import blog.model.TaskCreated
+import blog.model.TaskDeleted
+import blog.model.TaskUpdated
 import blog.model.User
 import blog.model.UserCreated
-import blog.model.UserResponse
-import blog.model.Session
-import io.hypersistence.tsid.TSID
-import reactor.core.publisher.Mono
+import blog.model.UserDeleted
+import blog.model.UserDeletedByEmail
+import org.slf4j.LoggerFactory
+import java.util.concurrent.ConcurrentHashMap
 
 class Reader(
-  private val users: MutableList<User> = mutableListOf(),
-  private val notes: MutableList<Note> = mutableListOf(),
-  private val tasks: MutableList<Task> = mutableListOf(),
-  private val comms: MutableList<Comment> = mutableListOf(),
-  private val sessions: MutableList<Session> = mutableListOf()
+  private val users: MutableMap<Long, User> = ConcurrentHashMap(),
+  private val tasks: MutableMap<Long, Task> = ConcurrentHashMap(),
+  private val notes: MutableMap<Long, Note> = ConcurrentHashMap(),
+  private var serverReady: Boolean = false,
+  private var recovered: Boolean = false,
 ) {
-  fun findUser(id: TSID): User? = users.find { it.id == id }
-  fun findUserByEmail(email: String): Mono<User> = Mono.justOrEmpty(users.find { it.email == email })
-  fun loggedin(s: String): User? = sessions.find { it.token == s.replace("Bearer ", "") }?.user
-  fun allUsers(): List<UserResponse> = users.map { it.toResponse(this) }
-  fun allSessions(): List<Session> = sessions
-  fun findCommentsForUser(id: TSID): List<Comment> = comms.filter { it.user == id }
+  private val logger = LoggerFactory.getLogger("Reader")
 
-  fun findNote(id: TSID): Note? = notes.find { it.id == id }
-  fun findNotesForUser(id: TSID): List<Note> = notes.filter { it.user == id }
-  fun allNotes(): List<Note> = notes
-  fun findCommentsForNote(id: TSID): List<Comment> = comms.filter { it.owner == id }
+  fun findUser(id: Long): User? = users[id]
+  fun findUserByEmail(email: String): User? = users.values.find { it.email == email }
+  fun exists(email: String): Boolean = findUserByEmail(email) != null
+  fun canAuthenticate(email: String, password: String): Boolean = users.values.find { it.email == email && it.password == password } != null
+  fun canNotAuthenticate(email: String, password: String): Boolean = !canAuthenticate(email, password)
+  fun allUsers(rows: Int = 10, start: Int = 0): List<User> = users.values.drop(start * rows).take(rows)
 
-  fun findTask(id: TSID): Task? = tasks.find { it.id == id }
-  fun findTasksForUser(id: TSID): List<Task> = tasks.filter { it.user == id }
-  fun allTasks(): List<Task> = tasks
-  fun findCommentsForTask(id: TSID): List<Comment> = comms.filter { it.owner == id }
+  inline fun <reified T> find(id: Long): T? {
+    return when (T::class) {
+      User::class -> findUser(id) as T?
+      Note::class -> findNote(id) as T?
+      Task::class -> findTask(id) as T?
+      else -> throw IllegalArgumentException("Reader.find: Unsupported type: ${T::class}")
+    }
+  }
+
+  fun findNote(id: Long): Note? = notes[id]
+  fun findNotesForUser(id: Long): List<Note> = notes.values.filter { it.user == id }
+  fun allNotes(rows: Int = 10, start: Int = 0): List<Note> = notes.values.drop(start * rows).take(rows)
+
+  fun findTask(id: Long): Task? = tasks[id]
+  fun notExistsTask(id: Long): Boolean = !tasks.containsKey(id)
+  fun findTasksForUser(id: Long): List<Task> = tasks.values.filter { it.user == id }
+  fun allTasks(rows: Int = 10, start: Int = 0): List<Task> = tasks.values.drop(start * rows).take(rows)
+
+  fun setServerReady() { serverReady = true }
+  fun setRecovered() { recovered = true }
+  fun isReady(): Boolean = serverReady && recovered
+
+  fun counts(): Counts = Counts(users.size, notes.size, tasks.size)
 
   fun processEvent(e: Event) {
-    when(e) {
-      is UserCreated -> users.add(e.toEntity())
-      is NoteCreated -> notes.add(e.toEntity())
-      is NoteUpdated -> notes.replaceAll { x -> if (x.id == e.id) x.copy(title = e.title ?: x.title, body = e.body ?: x.body) else x }
-      is NoteDeleted -> notes.removeIf { it.id == e.id }
-      is TaskCreated -> tasks.add(e.toEntity())
-      is CommentCreated -> comms.add(e.toEntity())
-      is LoggedIn -> sessions.add(e.toSession())
-      else -> println("could not processEvent $e")
+    logger.info("processEvent: {}", e)
+    when (e) {
+      is UserCreated -> users[e.id] = e.toEntity()
+      is UserDeleted -> users.remove(e.id)
+      is UserDeletedByEmail -> users.filter { it.value.email == e.email }.map { it.key }.forEach { users.remove(it) }
+      is NoteCreated -> notes[e.id] = e.toEntity()
+      is NoteUpdated -> if (notes[e.id] != null) notes[e.id] = notes[e.id]!!.update(e)
+      is NoteDeleted -> notes.remove(e.id)
+      is TaskCreated -> tasks[e.id] = e.toEntity()
+      is TaskUpdated -> if (tasks[e.id] != null) tasks[e.id] = tasks[e.id]!!.update(e)
+      is TaskDeleted -> tasks.remove(e.id)
+      else -> logger.warn("could not processEvent {}", e)
     }
   }
 }

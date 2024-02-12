@@ -1,14 +1,13 @@
 package blog.read
 
-import blog.model.LoggedIn
-import blog.model.NoteDeleted
 import blog.model.NoteCreated
+import blog.model.NoteDeleted
 import blog.model.TaskCreated
+import blog.model.User
 import blog.model.UserCreated
 import blog.model.nextId
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
-import java.time.LocalDate
 import java.time.LocalDateTime
 
 class ReaderTests {
@@ -18,12 +17,17 @@ class ReaderTests {
   @Test
   fun `new user`() {
     val reader = Reader()
-    reader.processEvent(UserCreated(userId, "test@tester.nl", "Tester", "Welkom123!", LocalDate.now().minusYears(42)))
+    reader.processEvent(UserCreated(userId, "test@tester.nl", "Tester", "Welkom123!"))
     assertThat(reader.allUsers()).hasSize(1)
     assertThat(reader.findUser(userId)).isNotNull
 
-    reader.processEvent(UserCreated(nextId(), "break@tester.nl", "Breaker", "Welkom124!", LocalDate.now().minusYears(42)))
+    reader.processEvent(UserCreated(nextId(), "break@tester.nl", "Breaker", "Welkom124!"))
     assertThat(reader.allUsers()).hasSize(2)
+
+    val user: User? = reader.find(userId)
+    assertThat(user).isNotNull
+
+    assertThat(reader.find(userId) as User?).isNotNull
   }
 
   @Test
@@ -34,7 +38,7 @@ class ReaderTests {
     assertThat(reader.allNotes()).hasSize(1)
     assertThat(reader.findNotesForUser(userId)).hasSize(1)
 
-    reader.processEvent(NoteDeleted(noteId, userId))
+    reader.processEvent(NoteDeleted(noteId))
     assertThat(reader.allNotes()).isEmpty()
   }
 
@@ -49,26 +53,9 @@ class ReaderTests {
   }
 
   @Test
-  fun login() {
-    val reader = Reader()
-    reader.processEvent(UserCreated(userId, "test@tester.nl", "Tester", "Welkom123!", LocalDate.now().minusYears(42)))
-    assertThat(reader.allUsers()).hasSize(1)
-    assertThat(reader.findUser(userId)).isNotNull
-
-    val user = reader.findUser(userId)
-    assertThat(user).isNotNull
-    reader.processEvent(LoggedIn("test", user!!, "test@tester.nl", "Welkom123!"))
-    assertThat(reader.allSessions()).hasSize(1)
-    val session = reader.allSessions().first()
-    assertThat(session.user.id).isEqualTo(userId)
-    val loggedin = reader.loggedin(session.token)
-    assertThat(loggedin).isNotNull
-  }
-
-  @Test
   fun `all together now`() {
     val reader = Reader()
-    reader.processEvent(UserCreated(userId, "test@tester.nl", "Tester", "Welkom123!", LocalDate.now().minusYears(42)))
+    reader.processEvent(UserCreated(userId, "test@tester.nl", "Tester", "Welkom123!"))
     assertThat(reader.allUsers()).hasSize(1)
 
     reader.processEvent(NoteCreated(nextId(), userId, "title", "body"))

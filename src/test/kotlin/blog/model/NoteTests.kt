@@ -3,7 +3,6 @@ package blog.model
 import akka.Done
 import akka.actor.testkit.typed.javadsl.TestKitJunitResource
 import akka.pattern.StatusReply
-import io.hypersistence.tsid.TSID
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import java.util.UUID
@@ -19,14 +18,13 @@ class NoteTests {
   private val probeNoteRes = testKit.createTestProbe<StatusReply<NoteResponse>>().ref
   private val probeNoteDel = testKit.createTestProbe<StatusReply<Done>>().ref
 
-  private val userId: TSID = nextId()
+  private val userId: Long = nextId()
 
   @Test
   fun `create request to command to event to entity`() {
-    val cnr = CreateNoteRequest(userId.toString(), "title", "body")
-    assertThat(cnr.validate()).isEmpty()
+    val cnr = CreateNoteRequest("title", "body")
 
-    val cn = cnr.toCommand(probeNoteRes)
+    val cn = cnr.toCommand(userId, probeNoteRes)
     assertThat(cn.id).isNotNull
     assertThat(cn.user).isEqualTo(userId)
     assertThat(cn.title).isEqualTo("title")
@@ -43,18 +41,13 @@ class NoteTests {
     assertThat(note.user).isEqualTo(userId)
     assertThat(note.title).isEqualTo("title")
     assertThat(note.body).isEqualTo("body")
-
-    assertThat(cnr.copy(title = "").validate()).hasSize(1)
-    assertThat(cnr.copy(body = "").validate()).hasSize(1)
-    assertThat(cnr.copy(title = "", body = "").validate()).hasSize(2)
   }
 
   @Test
   fun `update request to command to event`() {
-    val run = UpdateNoteRequest(userId.toString(), nextId().toString(), "title", "body")
-    assertThat(run.validate()).isEmpty()
+    val run = UpdateNoteRequest(nextId(), "title", "body")
 
-    val un: UpdateNote = run.toCommand(probeNoteRes)
+    val un: UpdateNote = run.toCommand(userId, probeNoteRes)
     assertThat(un.id).isNotNull
     assertThat(un.user).isEqualTo(userId)
     assertThat(un.title).isEqualTo("title")
@@ -76,9 +69,8 @@ class NoteTests {
 
   @Test
   fun `delete command to event`() {
-    val dn = DeleteNote(userId, nextId(), probeNoteDel)
+    val dn = DeleteNote(nextId(), probeNoteDel)
     val de: NoteDeleted = dn.toEvent()
     assertThat(de.id).isNotNull
-    assertThat(de.user).isEqualTo(userId)
   }
 }

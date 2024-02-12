@@ -1,0 +1,16 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="MainKt" type="JetRunConfigurationType" nameIsGenerated="true">
+    <option name="ALTERNATIVE_JRE_PATH" value="temurin-21 (2)" />
+    <option name="ALTERNATIVE_JRE_PATH_ENABLED" value="true" />
+    <envs>
+      <env name="KONOMAS_JWT_SECRET" value="JUYbWR3sv96qYYmnVrjqvLhJ2p3DFZyMt3oAP7brJc2DVznimERu6TxLebPGXaQy" />
+      <env name="KONOMAS_SENTRY_DSN" value="https://714ec71a76c871dd162ce11bd6b2d4fd@o4505748569849856.ingest.sentry.io/4506733227802624&quot;" />
+    </envs>
+    <option name="MAIN_CLASS_NAME" value="blog.MainKt" />
+    <module name="konomas.main" />
+    <shortenClasspath name="NONE" />
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>

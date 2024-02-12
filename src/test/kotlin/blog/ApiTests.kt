@@ -1,130 +1,250 @@
 package blog
 
-import akka.actor.testkit.typed.javadsl.TestKitJunitResource
-import akka.actor.typed.ActorRef
-import blog.model.Command
-import blog.model.NoteResponse
-import blog.model.OAuthToken
+import blog.model.TaskResponse
 import blog.model.UserResponse
-import blog.read.Reader
-import blog.write.Processor
+import blog.model.Counts
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
+import io.ktor.client.*
+import io.ktor.client.call.*
+import io.ktor.client.engine.cio.*
+import io.ktor.client.request.*
+import io.ktor.client.statement.*
+import io.ktor.http.*
+import io.ktor.serialization.jackson.*
+import kotlinx.coroutines.runBlocking
 import org.assertj.core.api.Assertions.assertThat
-import org.junit.jupiter.api.AfterEach
-import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.AfterAll
+import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
-import org.springframework.boot.runApplication
-import org.springframework.context.ConfigurableApplicationContext
-import org.springframework.test.web.reactive.server.WebTestClient
-import java.util.UUID
+import io.ktor.client.plugins.contentnegotiation.ContentNegotiation as ClientContentNegotiation
 
 class ApiTests {
-  private val testKit = TestKitJunitResource(
-    """akka.persistence.journal.plugin = "akka.persistence.journal.inmem" 
-       akka.persistence.snapshot-store.plugin = "akka.persistence.snapshot-store.local"  
-       akka.persistence.snapshot-store.local.dir = "build/snapshot-${UUID.randomUUID()}"  
-    """)
 
-  private var ub: ActorRef<Command>? = null
-  private var app: ConfigurableApplicationContext? = null
-  private val client = WebTestClient.bindToServer()
-    .baseUrl("http://localhost:8181")
-    .defaultHeader("Content-Type", "application/json")
-    .build()
-  private var reader: Reader = Reader()
+  private var client: HttpClient? = null
 
-  @BeforeEach
+  @BeforeAll
   fun before() {
-    reader = Reader()
-    ub = testKit.spawn(Processor.create("1", reader), "user-behavior")
-    app = runApplication<Application> {
-      addInitializers(beans(ub!!, testKit.system(), reader))
+    MainTest.run()
+    var index = 0
+    while (!MainTest.ready && index < 20) {
+      Thread.sleep(100)
+      index++
+    }
+    client = HttpClient(CIO) {
+      install(ClientContentNegotiation) {
+        jackson {
+          registerModules(JavaTimeModule())
+        }
+      }
     }
   }
 
-  @AfterEach
+  @AfterAll
   fun after() {
-    app?.close()
-    testKit.stop(ub)
-  }
-
-
-  @Test
-  fun `new user with new note`() {
-    val email = "one@test.er"
-    client.get("/api/users").exchange().expectStatus().isOk.expectBodyList(UserResponse::class.java).hasSize(0)
-    val user = client.post("/api/user")
-      .bodyValue("""{"email":"$email","name":"Tester","password":"welkom123","born":"1999-09-11"}""")
-      .exchange()
-      .expectStatus().isCreated
-      .expectBody(UserResponse::class.java)
-      .returnResult().responseBody
-    assertThat(user).isNotNull
-    client.get("/api/users").exchange().expectStatus().isOk.expectBodyList(UserResponse::class.java).hasSize(1)
-
-    client.get("/api/user/id/${user?.id}").exchange().expectStatus().isOk
-    client.get("/api/user/email/${user?.email}").exchange().expectStatus().isOk
-
-    val oAuthToken = client.post("/api/login")
-      .bodyValue("""{"username":"$email","password":"welkom123"}""")
-      .exchange()
-      .expectStatus().isOk
-      .expectBody(OAuthToken::class.java)
-      .returnResult().responseBody
-
-    val note = client.post("/api/note")
-      .header("Authorization", "Bearer ${oAuthToken!!.access_token}")
-      .bodyValue("""{"user":"${user!!.id}","title":"Titel","body":"Body tekst"}""")
-      .exchange()
-      .expectStatus().isCreated
-      .expectBody(NoteResponse::class.java)
-      .returnResult().responseBody
-
-    client.get("/api/note/${note?.id}").exchange().expectStatus().isOk
+    MainTest.stop()
+    client?.close()
   }
 
   @Test
-  fun `login with non-existent credentials`() {
-    client.get("/api/users").exchange().expectStatus().isOk.expectBodyList(UserResponse::class.java).hasSize(0)
-    client.post("/api/login")
-      .bodyValue("""{"username":"fout@test.er","password":"welkom124"}""")
-      .exchange()
-      .expectStatus().isForbidden
+  fun `register and retrieve new user`() {
+    assertThat(client).isNotNull
+    runBlocking {
+      val email = "one@test.er"
+      var response: HttpResponse = client!!.post("http://localhost:8181/api/users") {
+        contentType(ContentType.Application.Json)
+        setBody("""{"email":"$email","name":"Tester","password":"welkom123"}""")
+      }
+      assertThat(response.status.value).isEqualTo(201)
+      assertThat(response.headers["Location"]).startsWith("/api/users")
+      val loc = response.headers["Location"]
+      response = client!!.get("http://localhost:8181$loc")
+      assertThat(response.status.value).isEqualTo(200)
+      assertThat(response.headers["Content-Type"]).isEqualTo("application/json; charset=UTF-8")
+      val ur = response.body<UserResponse>()
+      assertThat(ur.name).isEqualTo("Tester")
+      assertThat(ur.email).isEqualTo(email)
+    }
   }
 
   @Test
-  fun `update note`() {
-    val email = "two@test.er"
-    val user = client.post("/api/user")
-      .bodyValue("""{"email":"$email","name":"Tester","password":"welkom123","born":"1999-09-11"}""")
-      .exchange()
-      .expectStatus().isCreated.expectBody(UserResponse::class.java).returnResult().responseBody
-    assertThat(user).isNotNull
-    val oAuthToken = client.post("/api/login")
-      .bodyValue("""{"username":"$email","password":"welkom123"}""")
-      .exchange()
-      .expectStatus().isOk.expectBody(OAuthToken::class.java).returnResult().responseBody
-    assertThat(oAuthToken).isNotNull
+  fun `try to register user with bad json`() {
+    assertThat(client).isNotNull
+    runBlocking {
+      var response = client!!.post("http://localhost:8181/api/users") {
+        contentType(ContentType.Application.Json)
+        setBody("""{"email":"bad email address @ where.here","name":"Tester","password":"welkom123"}""")
+      }
+      assertThat(response.status.value).isEqualTo(400)
+      assertThat(response.body<String>()).isEqualTo("invalid email address")
 
-    val note = client.post("/api/note")
-      .header("Authorization", "Bearer ${oAuthToken!!.access_token}")
-      .bodyValue("""{"user":"${user!!.id}","title":"Titel","body":"Body tekst"}""")
-      .exchange()
-      .expectStatus().isCreated.expectBody(NoteResponse::class.java).returnResult().responseBody
-    assertThat(note).isNotNull
+      response = client!!.post("http://localhost:8181/api/users") {
+        contentType(ContentType.Application.Json)
+        setBody("""{"email":"good@where.here","name":"","password":"welkom123"}""")
+      }
+      assertThat(response.status.value).isEqualTo(400)
+      assertThat(response.body<String>()).isEqualTo("invalid name")
 
-    val user2 = client.get("/api/user/id/${user.id}").exchange().expectStatus().isOk.expectBody(UserResponse::class.java).returnResult().responseBody
-    assertThat(user2?.id).isEqualTo(user.id)
+      response = client!!.post("http://localhost:8181/api/users") {
+        contentType(ContentType.Application.Json)
+        setBody("""{"email":"good@where.here","name":"Toaster","password":""}""")
+      }
+      assertThat(response.status.value).isEqualTo(400)
+      assertThat(response.body<String>()).isEqualTo("invalid password")
 
-    val note2 = client.get("/api/note/${note?.id}").exchange().expectStatus().isOk.expectBody(NoteResponse::class.java).returnResult().responseBody
-    assertThat(note2?.id).isEqualTo(note?.id)
+      response = client!!.post("http://localhost:8181/api/users") {
+        contentType(ContentType.Application.Json)
+        setBody("""{"email":"good@where.here","name":"Toaster","password":"passwo"}""")
+      }
+      assertThat(response.status.value).isEqualTo(400)
+      assertThat(response.body<String>()).isEqualTo("password too short")
+    }
+  }
 
-    val updated = client.put("/api/note")
-      .header("Authorization", "Bearer ${oAuthToken.access_token}")
-      .bodyValue("""{"user":"${user.id}","id":"${note?.id}","title":"Nieuwe titel","body":"Nieuwe body tekst"}""")
-      .exchange()
-      .expectStatus().isOk
-      .expectBody(NoteResponse::class.java).returnResult().responseBody
-    assertThat(updated).isNotNull
-    assertThat(updated!!.title).isEqualTo("Nieuwe titel")
+  @Test
+  fun `try to login`() {
+    assertThat(client).isNotNull
+    runBlocking {
+      val email = "login@here.now"
+      var response: HttpResponse = client!!.post("http://localhost:8181/api/users") {
+        contentType(ContentType.Application.Json)
+        setBody("""{"email":"$email","name":"Tester","password":"welkom123"}""")
+      }
+      assertThat(response.status.value).isEqualTo(201)
+
+      response = client!!.post("http://localhost:8181/api/login") {
+        contentType(ContentType.Application.Json)
+        setBody("""{"username":"$email","password":"welkom123"}""")
+      }
+      assertThat(response.status.value).isEqualTo(200)
+      assertThat(response.headers["Content-Type"]).isEqualTo("application/json; charset=UTF-8")
+      val token = response.body<Token>()
+      assertThat(token).isNotNull
+
+      response = client!!.get("http://localhost:8181/api/users/tasks") {
+        header("Authorization", "Bearer ${token.token}")
+      }
+      assertThat(response.status.value).isEqualTo(200)
+    }
+  }
+
+  @Test
+  fun `fail to login`() {
+    assertThat(client).isNotNull
+    runBlocking {
+      val email = "fail@to.login"
+      var response: HttpResponse = client!!.post("http://localhost:8181/api/users") {
+        contentType(ContentType.Application.Json)
+        setBody("""{"email":"$email","name":"Tester","password":"welkom123"}""")
+      }
+      assertThat(response.status.value).isEqualTo(201)
+
+      response = client!!.post("http://localhost:8181/api/login") {
+        contentType(ContentType.Application.Json)
+        setBody("""{"username":"$email","password":""}""")
+      }
+      assertThat(response.status).isEqualTo(HttpStatusCode.BadRequest)
+      assertThat(response.body<String>()).isEqualTo("invalid password")
+
+      response = client!!.post("http://localhost:8181/api/login") {
+        contentType(ContentType.Application.Json)
+        setBody("""{"username":"$email","password":"verkeerd!"}""")
+      }
+      assertThat(response.status).isEqualTo(HttpStatusCode.BadRequest)
+      assertThat(response.body<String>()).isEqualTo("username or password not correct")
+
+      response = client!!.post("http://localhost:8181/api/login") {
+        contentType(ContentType.Application.Json)
+        setBody("""{"username":"","password":"password"}""")
+      }
+      assertThat(response.status).isEqualTo(HttpStatusCode.BadRequest)
+      assertThat(response.body<String>()).isEqualTo("invalid username")
+
+      response = client!!.post("http://localhost:8181/api/login") {
+        contentType(ContentType.Application.Json)
+        setBody("""{"username":"","password":""}""")
+      }
+      assertThat(response.status).isEqualTo(HttpStatusCode.BadRequest)
+      assertThat(response.body<String>()).isEqualTo("invalid username")
+
+      response = client!!.post("http://localhost:8181/api/login") {
+        contentType(ContentType.Application.Json)
+        setBody("""{}""")
+      }
+      assertThat(response.status).isEqualTo(HttpStatusCode.BadRequest)
+    }
+  }
+
+  @Test
+  fun `check some nice info`() {
+    assertThat(client).isNotNull
+    runBlocking {
+      var response = client!!.get("http://localhost:8181/info/ready")
+      assertThat(response.status).isEqualTo(HttpStatusCode.OK)
+
+      response = client!!.get("http://localhost:8181/info/alive")
+      assertThat(response.status).isEqualTo(HttpStatusCode.OK)
+
+      response = client!!.get("http://localhost:8181/info/counts")
+      assertThat(response.status).isEqualTo(HttpStatusCode.OK)
+      val counts = response.body<Counts>()
+      assertThat(counts.users).isGreaterThanOrEqualTo(0)
+      assertThat(counts.notes).isGreaterThanOrEqualTo(0)
+      assertThat(counts.tasks).isGreaterThanOrEqualTo(0)
+
+      response = client!!.get("http://localhost:8181/info/stati")
+      assertThat(response.status).isEqualTo(HttpStatusCode.OK)
+      val stati: Stati = response.body<Stati>()
+      assertThat(stati).isNotNull
+      assertThat(stati.stati).hasSize(4)
+    }
+  }
+
+  @Test
+  fun `make a task`() {
+    assertThat(client).isNotNull
+    runBlocking {
+      val email = "todo@test.er"
+      var response: HttpResponse = client!!.post("http://localhost:8181/api/users") {
+        contentType(ContentType.Application.Json)
+        setBody("""{"email":"$email","name":"Tester","password":"welkom123"}""")
+      }
+      assertThat(response.status.value).isEqualTo(201)
+      val loc = response.headers["Location"]
+
+      response = client!!.post("http://localhost:8181/api/login") {
+        contentType(ContentType.Application.Json)
+        setBody("""{"username":"$email","password":"welkom123"}""")
+      }
+      assertThat(response.status.value).isEqualTo(200)
+      assertThat(response.headers["Content-Type"]).isEqualTo("application/json; charset=UTF-8")
+      val token = response.body<Token>()
+      assertThat(token).isNotNull
+
+      response = client!!.get("http://localhost:8181/api/users/tasks") {
+        header(HttpHeaders.Authorization, "Bearer ${token.token}")
+      }
+      assertThat(response.status.value).isEqualTo(200)
+
+      response = client!!.post("http://localhost:8181/api/tasks") {
+        contentType(ContentType.Application.Json)
+        header(HttpHeaders.Authorization, "Bearer ${token.token}")
+        setBody("""{"title": "Title", "body": "Body Text", "due":"2025-01-01T00:00:00"}""")
+      }
+      assertThat(response.status.value).isEqualTo(201)
+      val body = response.body<TaskResponse>()
+      assertThat(body.title).isEqualTo("Title")
+
+      response = client!!.get("http://localhost:8181$loc")
+      assertThat(response.status).isEqualTo(HttpStatusCode.OK)
+      val ur = response.body<UserResponse>()
+      assertThat(ur.tasks).hasSize(1)
+      println("ur: $ur")
+
+      response = client!!.get("http://localhost:8181/info/counts")
+      println(response.body<Counts>())
+    }
   }
 }
+
+data class Token(val token: String)
+data class Stati(val stati: List<String>)

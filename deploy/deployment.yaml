@@ -17,19 +17,24 @@ spec:
             - name: ASTRA_USERNAME
               valueFrom:
                 configMapKeyRef:
-                  name: astra-config
+                  name: astra-credentials
                   key: ASTRA_USERNAME
             - name: ASTRA_PASSWORD
               valueFrom:
                 configMapKeyRef:
-                  name: astra-config
+                  name: astra-credentials
                   key: ASTRA_PASSWORD
+            - name: KONOMAS_JTW_SECRET
+              valueFrom:
+                configMapKeyRef:
+                  key: KONOMAS_JWT_SECRET
+                  name: jwt-config
             - name: ASTRA_SCB
               value: /var/local/scb_e93d3b60-4128-4094-8824-a37327f973c4_europe-west1.zip
           resources:
             limits:
               cpu: "2"
-              memory: "1024Mi"
+              memory: "2048Mi"
             requests:
               cpu: 500m
               memory: "512Mi"
@@ -37,7 +42,7 @@ spec:
             failureThreshold: 5
             httpGet:
               port: 8080
-              path: /actuator/health/liveness
+              path: /info/alive
               scheme: HTTP
             initialDelaySeconds: 5
             periodSeconds: 5
@@ -46,7 +51,7 @@ spec:
             failureThreshold: 5
             httpGet:
               port: 8080
-              path: /actuator/health/readiness
+              path: /info/ready
               scheme: HTTP
             initialDelaySeconds: 10
             periodSeconds: 5

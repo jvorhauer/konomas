@@ -2,7 +2,6 @@ package blog.model
 
 import akka.actor.testkit.typed.javadsl.TestKitJunitResource
 import akka.pattern.StatusReply
-import blog.Constants.born
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.Test
@@ -20,24 +19,31 @@ class UserTests {
 
   @Test
   fun `request to command`() {
-    val r = RegisterUserRequest("jurjen@vorhauer.nl", "a", "abcdefghij", born)
-    assertThat(r.validate()).isEmpty()
+    val r = RegisterUserRequest("jurjen@vorhauer.nl", "a", "abcdefghij")
     val c = r.toCommand(probe)
     assertThat(c.email).isEqualTo(r.email)
     assertThat(c.name).isEqualTo(r.name)
     assertThat(c.password).isEqualTo(r.password)
-    assertThat(c.born).isEqualTo(r.born)
   }
 
   @Test
   fun `command to event`() {
-    val c = CreateUser(nextId(), "a@b.c", "a", "p", born, probe)
+    val c = CreateUser("a@b.c", "a", "p", probe)
     val e = c.toEvent()
     assertThat(e.email).isEqualTo(c.email)
     assertThat(e.name).isEqualTo(c.name)
-    assertThat(e.born).isEqualTo(c.born)
     assertThat(e.id).isNotNull
     assertThat(e.password).isEqualTo(Hasher.hash(c.password))
+  }
+
+  @Test
+  fun `event to entity`() {
+    val uc = UserCreated(1L, "a@b.c", "a", "password")
+    val u = uc.toEntity()
+    assertThat(u.id).isEqualTo(uc.id)
+    assertThat(u.email).isEqualTo(uc.email)
+    assertThat(u.name).isEqualTo(uc.name)
+    assertThat(u.password).isEqualTo(uc.password)
   }
 
   @AfterAll

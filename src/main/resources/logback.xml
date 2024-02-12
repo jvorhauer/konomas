@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration scan="false" debug="false">
+
+  <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+    <encoder>
+      <pattern>[%date{ISO8601, CET}] %level %logger [%marker] [%thread] - %msg [%mdc]%n</pattern>
+    </encoder>
+  </appender>
+
+  <appender name="SENTRY" class="io.sentry.logback.SentryAppender">
+    <minimumEventLevel>WARN</minimumEventLevel>
+  </appender>
+
+  <appender name="ASYNC_CONSOLE" class="ch.qos.logback.classic.AsyncAppender">
+    <queueSize>8192</queueSize>
+    <neverBlock>true</neverBlock>
+    <appender-ref ref="CONSOLE" />
+  </appender>
+
+  <root level="INFO">
+    <appender-ref ref="ASYNC_CONSOLE" />
+    <appender-ref ref="SENTRY" />
+  </root>
+</configuration>
