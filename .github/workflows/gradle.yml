@@ -8,6 +8,9 @@ jobs:
       KONOMAS_JWT_SECRET: ${{ secrets.KONOMAS_JWT_SECRET }}
       KONOMAS_SENTRY_DSN: ${{ secrets.KONOMAS_SENTRY_DSN }}
       KONOMAS_SENTRY_TOKEN: ${{ secrets.KONOMAS_SENTRY_TOKEN }}
+      ASTRA_SCB: ${{ secrets.ASTRA_SCB }}
+      ASTRA_USERNAME: ${{ secrets.ASTRA_USERNAME }}
+      ASTRA_PASSWORD: ${{ secrets.ASTRA_PASSWORD }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
