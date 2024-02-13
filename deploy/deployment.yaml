@@ -12,7 +12,7 @@ spec:
     spec:
       containers:
         - name: konomas
-          image: ghcr.io/jvorhauer/konomas:latest
+          image: ghcr.io/jvorhauer/konomas:1.0.11
           env:
             - name: ASTRA_USERNAME
               valueFrom:
@@ -24,7 +24,7 @@ spec:
                 configMapKeyRef:
                   name: astra-credentials
                   key: ASTRA_PASSWORD
-            - name: KONOMAS_JTW_SECRET
+            - name: KONOMAS_JWT_SECRET
               valueFrom:
                 configMapKeyRef:
                   key: KONOMAS_JWT_SECRET

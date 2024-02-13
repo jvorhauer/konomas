@@ -1,6 +1,7 @@
 import com.github.benmanes.gradle.versions.updates.DependencyUpdatesTask
 import net.researchgate.release.ReleaseExtension
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+import java.time.Instant
 
 plugins {
   jacoco
@@ -126,7 +127,7 @@ jib {
     image = "ghcr.io/jvorhauer/konomas:latest"
     tags = mutableSetOf("$version")
     auth {
-      username = System.getenv("GITHUB_USER")
+      username = System.getenv("GITHUB_USERNAME")
       password = System.getenv("GITHUB_TOKEN")
     }
   }
@@ -134,6 +135,7 @@ jib {
     jvmFlags = listOf("-Xms512m", "-Xmx1024m")
     mainClass = "blog.MainKt"
     ports = listOf("8080/tcp")
+    creationTime = Instant.now().toString()
   }
   setAllowInsecureRegistries(true)
 }
