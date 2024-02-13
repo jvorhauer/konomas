@@ -1,0 +1,14 @@
+apiVersion: cert-manager.io/v1
+kind: CluserIssuer
+metadata:
+  name: lets-encrypt
+spec:
+  acme:
+    email: jurjen@vorhauer.nl
+    server: https://acme-v02.api.letsencrypt.org/directory
+    privateKeySecretRef:
+      name: lets-encrypt-secret-key
+    solvers:
+      - http0:
+          ingress:
+            class: public
