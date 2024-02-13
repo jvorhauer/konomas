@@ -10,7 +10,6 @@ plugins {
   id("net.researchgate.release") version "3.0.2"
   id("com.github.ben-manes.versions") version "0.51.0"
   id("io.ktor.plugin") version "2.3.8"
-  id("io.github.simulatan.gradle-buildinfo-plugin") version "v1.0.0"
   id("io.sentry.jvm.gradle") version "4.3.0"
 }
 
@@ -133,7 +132,7 @@ jib {
   }
   container {
     jvmFlags = listOf("-Xms512m", "-Xmx1024m")
-    mainClass = "blog.ApplicationKt"
+    mainClass = "blog.MainKt"
     ports = listOf("8080/tcp")
   }
   setAllowInsecureRegistries(true)
