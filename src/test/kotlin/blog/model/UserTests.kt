@@ -38,12 +38,13 @@ class UserTests {
 
   @Test
   fun `event to entity`() {
-    val uc = UserCreated(1L, "a@b.c", "a", "password")
+    val uc = UserCreated(1L, "jurjen@vorhauer.nl", "Jurjen", "password")
     val u = uc.toEntity()
     assertThat(u.id).isEqualTo(uc.id)
     assertThat(u.email).isEqualTo(uc.email)
     assertThat(u.name).isEqualTo(uc.name)
     assertThat(u.password).isEqualTo(uc.password)
+    assertThat(u.gravatar).isEqualTo("6c8e85364ba2cae4fc908189bee6fa566f148957c42dd778c1cd6e0af03cb0aa")
   }
 
   @AfterAll

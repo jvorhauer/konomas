@@ -25,6 +25,8 @@ object Hasher {
   private fun toHex(ba: ByteArray) = ba.joinToString(separator = "") { String.format(Locale.US, "%02x", it) }
   fun hash(s: String): String = toHex(md.digest(s.toByteArray(StandardCharsets.UTF_8)))
 }
+fun gravatarize(s: String): String = s.trim().lowercase().hashed()
+
 
 val DTF: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
 fun now(): LocalDateTime = LocalDateTime.now()

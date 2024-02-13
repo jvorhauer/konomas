@@ -51,12 +51,14 @@ data class User(
   val email: String,
   val name: String,
   val password: String,
+  val gravatar: String = gravatarize(email)
 ) : Entity {
   fun toResponse(reader: Reader): UserResponse = UserResponse(
     id,
     email,
     name,
     DTF.format(id.toTSID().instant.atZone(ZoneId.of("CET"))),
+    gravatar,
     reader.findNotesForUser(id).map(Note::toResponse),
     reader.findTasksForUser(id).map(Task::toResponse)
   )
@@ -69,6 +71,7 @@ data class UserResponse(
   val email: String,
   val name: String,
   val joined: String,
+  val gravatar: String,
   val notes: List<NoteResponse>,
   val tasks: List<TaskResponse>,
 )
