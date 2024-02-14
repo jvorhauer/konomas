@@ -29,7 +29,7 @@ class Reader(
   fun findUser(id: Long): User? = users[id]
   fun findUserByEmail(email: String): User? = users.values.find { it.email == email }
   fun exists(email: String): Boolean = findUserByEmail(email) != null
-  fun canAuthenticate(email: String, password: String): Boolean = users.values.find { it.email == email && it.password == password } != null
+  private fun canAuthenticate(email: String, password: String): Boolean = users.values.find { it.email == email && it.password == password } != null
   fun canNotAuthenticate(email: String, password: String): Boolean = !canAuthenticate(email, password)
   fun allUsers(rows: Int = 10, start: Int = 0): List<User> = users.values.drop(start * rows).take(rows)
 

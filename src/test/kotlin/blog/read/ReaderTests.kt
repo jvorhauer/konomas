@@ -9,6 +9,7 @@ import blog.model.nextId
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import java.time.LocalDateTime
+import blog.model.Task
 
 class ReaderTests {
 
@@ -49,7 +50,7 @@ class ReaderTests {
     reader.processEvent(TaskCreated(taskId, userId, "title", "body", LocalDateTime.now().plusHours(4)))
     assertThat(reader.allTasks()).hasSize(1)
     assertThat(reader.findTasksForUser(userId)).hasSize(1)
-    assertThat(reader.findTask(taskId)).isNotNull
+    assertThat(reader.find<Task>(taskId)).isNotNull
   }
 
   @Test

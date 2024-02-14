@@ -8,3 +8,8 @@ indent_style = space
 insert_final_newline = true
 max_line_length = 166
 tab_width = 2
+
+[{*.kt,kts}]
+ij_kotlin_imports_layout = java.**,|,javax.**,|,akka.**,|,com.**,|,org.**,|,*,|,blog.**
+ij_kotlin_name_count_to_use_star_import = 2147483647
+ij_kotlin_name_count_to_use_star_import_for_members = 2147483647

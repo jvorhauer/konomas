@@ -48,6 +48,7 @@ dependencies {
   implementation("io.ktor:ktor-server-call-logging-jvm")
   implementation("io.ktor:ktor-server-request-validation")
   implementation("io.ktor:ktor-server-status-pages")
+  implementation("io.ktor:ktor-server-cors")
   implementation("io.ktor:ktor-serialization-jackson")
   implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.16.1")
   implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.16.1")

@@ -3,19 +3,6 @@ package blog
 import akka.actor.typed.ActorSystem
 import akka.actor.typed.Behavior
 import akka.actor.typed.javadsl.Behaviors
-import blog.model.Konfig
-import blog.module.authentication
-import blog.module.content
-import blog.route.info
-import blog.module.logging
-import blog.module.status
-import blog.module.validation
-import blog.read.Reader
-import blog.route.loginRoute
-import blog.route.notesRoute
-import blog.route.tasksRoute
-import blog.route.usersRoute
-import blog.write.Processor
 import com.typesafe.config.ConfigFactory
 import io.github.config4k.extract
 import io.ktor.server.application.*
@@ -23,6 +10,20 @@ import io.ktor.server.engine.*
 import io.ktor.server.netty.*
 import io.ktor.server.routing.*
 import io.sentry.Sentry
+import blog.model.Konfig
+import blog.model.loginRoute
+import blog.model.notesRoute
+import blog.model.tasksRoute
+import blog.model.usersRoute
+import blog.module.authentication
+import blog.module.content
+import blog.module.http
+import blog.module.logging
+import blog.module.status
+import blog.module.validation
+import blog.read.Reader
+import blog.read.info
+import blog.write.Processor
 
 const val pid: String = "27"
 
@@ -30,13 +31,14 @@ object Main {
   private val kfg: Konfig = ConfigFactory.load("application.conf").extract("jwt")
 
   private val behavior: Behavior<Void> = Behaviors.setup { ctx ->
-    embeddedServer(Netty, port = 8080, watchPaths = listOf("classes")) {
+    embeddedServer(Netty, port = 8080) {
       val reader = Reader()
       val processor = ctx.spawn(Processor.create(pid, reader), "konomas")
       val scheduler = ctx.system.scheduler()
 
       environment.monitor.subscribe(ServerReady) { reader.setServerReady() }
 
+      http()
       content()
       logging()
       authentication(kfg)

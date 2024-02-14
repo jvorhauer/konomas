@@ -19,20 +19,19 @@ Content-Type: application/json
 
 > {% client.global.set("authorized", response.body.token); %}
 
-### get-protected
-GET {{host}}/api/test
-Authorization: Bearer {{authorized}}
-
 ### post-new-note
-POST {{host}}/api/note
+POST {{host}}/api/notes
 Content-Type: application/json
 Authorization: Bearer {{authorized}}
 
 {
-  "user": "39260243-6305-4898-b03a-6ce880894931",
   "title": "Jurjen's second Note",
   "body": "Note taking in its simplest form :-)"
 }
+
+### get-all-notes
+GET {{host}}/api/notes
+Authorization: Bearer {{authorized}}
 
 ### post-new-task
 POST {{host}}/api/tasks

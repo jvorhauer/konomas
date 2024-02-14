@@ -8,7 +8,6 @@ import org.slf4j.event.Level
 fun Application.logging() {
   install(CallLogging) {
     level = Level.INFO
-    filter { it.request.path().startsWith("/") }
-
+    filter { it.request.path().startsWith("/api") }
   }
 }

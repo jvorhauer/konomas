@@ -1,7 +1,6 @@
-package blog.route
+package blog.read
 
 import blog.model.TaskStatus
-import blog.read.Reader
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.response.*

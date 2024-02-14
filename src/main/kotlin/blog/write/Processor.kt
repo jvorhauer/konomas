@@ -1,5 +1,7 @@
 package blog.write
 
+import java.time.Duration
+
 import akka.Done
 import akka.actor.typed.Behavior
 import akka.actor.typed.SupervisorStrategy
@@ -12,6 +14,9 @@ import akka.persistence.typed.javadsl.EventHandler
 import akka.persistence.typed.javadsl.EventSourcedBehavior
 import akka.persistence.typed.javadsl.RetentionCriteria
 import akka.persistence.typed.javadsl.SignalHandler
+
+import org.slf4j.LoggerFactory
+
 import blog.model.Command
 import blog.model.CreateNote
 import blog.model.CreateTask
@@ -31,8 +36,6 @@ import blog.model.UpdateTask
 import blog.model.UserCreated
 import blog.model.UserDeleted
 import blog.read.Reader
-import org.slf4j.LoggerFactory
-import java.time.Duration
 
 private val onFail = SupervisorStrategy.restartWithBackoff(Duration.ofMillis(200), Duration.ofSeconds(5), 0.1)
 
