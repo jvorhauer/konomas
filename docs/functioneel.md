@@ -2,7 +2,8 @@
 
 ## Functioneel Ontwerp NoPaN
 
-NoPaN is een taak- en notitie registratie en beheer systeem: 
+NoPaN is een taak- en notitie registratie en beheer systeem:
+
 * Taken worden overzichtelijk weergegeven en zijn eenvoudig van status te veranderen.
 * Notities worden in een nette lijst, gepagineerd weergegeven.
 
@@ -46,15 +47,16 @@ NB: hoe kom ik aan 50 functionele en niet-functionele eisen?
 * moet uitgevoerd kunnen worden met Firefox, Chrome (incl. Edge, Arc, Brave, etc. etc.) en Safari
 * installatie en uitvoering van deze frontend applicatie hebben een internet verbinding nodig
 * testen op Chrome, Firefox en Safari, maar alleen op macOS, er vanuit gaand dat die browsers genoeg cross-platform zijn.
-
+* security is geen harde eis voor deze frontend: de bedoeling is dat de app alleen lokaal op de machine van een gebruiker draait en niet op een server in het grote,
+  boze internet.
 
 ### Use-Cases
 
-ToDo: 
-nieuwe gebruiker registreren, 
-aanmelden geregistreerde gebruiker, 
-nieuwe taak aanmaken, 
-taak-status veranderen door drag & drop en 
+ToDo:
+nieuwe gebruiker registreren,
+aanmelden geregistreerde gebruiker,
+nieuwe taak aanmaken,
+taak-status veranderen door drag & drop en
 nieuwe notitie aanmaken.
 
 ### Inspiratie Bronnen
@@ -62,7 +64,6 @@ nieuwe notitie aanmaken.
 * Trello
 * Jira
 * Basecamp
-
 
 ## Verantwoording
 
@@ -86,27 +87,31 @@ Maakt communiceren met mijn eigen en andere backends/APIs overzichtelijk en behe
 
 #### html
 
-Niet aan te ontkomen en dat zou ik ook niet willen. Ik vind, na 25 jaar regelmatig ermee werken, dat html niet voor niets nergens door vervangen is. Soms wat veel tekst nodig om iets te definieren, met name tabellen, maar over het algemeen begrijpelijk en structureel goed doordacht.
+Niet aan te ontkomen en dat zou ik ook niet willen. Ik vind, na 25 jaar regelmatig ermee werken, dat html niet voor niets nergens door vervangen is. Soms wat veel
+tekst nodig om iets te definieren, met name tabellen, maar over het algemeen begrijpelijk en structureel goed doordacht.
 
 #### css
 
-Voor layout, kleuren en typografie is css onmisbaar. Ondanks veel bezwaren vanuit ontwikkelaar-vriendelijkheid is css onlosmakelijk verbonden met het ontwikkelen van mooie en aansprekende websites en webapplicaties.
-
+Voor layout, kleuren en typografie is css onmisbaar. Ondanks veel bezwaren vanuit ontwikkelaar-vriendelijkheid is css onlosmakelijk verbonden met het ontwikkelen van
+mooie en aansprekende websites en webapplicaties.
 
 ### Limitaties
 
 #### Algemeen
 
-Werkt alleen met Internet verbinding, aangezien backend daar ergens draait; geen offline mogelijkheid
+Werkt alleen met Internet verbinding, aangezien backend daar ergens draait; geen offline mogelijkheid.
 
 #### Functioneel
 
 1. Een gebruiker heeft erg weinig informatie: naam, email adres en password. Een profiel met (veel) meer data zou aantrekkelijk kunnen zijn
-2. Een taak is opzettelijk inhoudelijk beperkt opgezet. Dit is in lijn met het BaseCamp gedachtengoed: zorg dat de tool geen doel op zich wordt, waarmee ook gezorgd wordt dat de functioneliteit niet ondergesneeud wordt door vele velden.
+2. Een taak is opzettelijk inhoudelijk beperkt opgezet. Dit is in lijn met het BaseCamp gedachtengoed: zorg dat de tool geen doel op zich wordt, waarmee ook gezorgd
+   wordt dat de functioneliteit niet ondergesneeud wordt door vele velden.
 3. Een notitie is om dezelfde reden bescheiden gehouden. Het risico dat veel verschillende invoer/data om steeds meer functionaliteit vraagt is te groot (zie Jira)
-4. Gebruikers leven nu in het backend systeem van NoPaN. Gegeven de grote hoeveelheden Google, HitHub, Microsoft, etc. bestaande accounts zou OAuth als autenticatie mechanisme wellicht makkelijker en zelfs drempelverlagend kunnen zijn.
-
+4. Gebruikers leven nu in het backend systeem van NoPaN. Gegeven de grote hoeveelheden Google, HitHub, Microsoft, etc. bestaande accounts zou OAuth als autenticatie
+   mechanisme wellicht makkelijker en zelfs drempelverlagend kunnen zijn.
 
 ## enige opmerkingen achteraf
 
-Het deel Figma-prototype heb ik expres overgeslagen: kost veel tijd en levert minder dan 5% van het eind-cijfer op. Wel geprobeerd om er een design systeem in te krijgen zodat in ieder geval kleuren, typografie en elementaire elementen enigszins voorgekookt zijn, maar dat had ik nog van een aparte cursus Figma van Novi overgehouden. Daarbij komt: ik ben geen grafische vormgever of designer. Dat is een vak apart.
+Het deel Figma-prototype heb ik expres overgeslagen: kost veel tijd en levert minder dan 5% van het eind-cijfer op, aangezien wireframes + figma in totaal 5%
+oplevert. Wel geprobeerd om er een design systeem in te krijgen zodat in ieder geval kleuren, typografie en elementaire elementen enigszins voorgekookt zijn, maar dat
+had ik nog van een aparte cursus Figma van Novi overgehouden. Daarbij komt: ik ben geen grafische vormgever of designer. Dat is een vak apart.
