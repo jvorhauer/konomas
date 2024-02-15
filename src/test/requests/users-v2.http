@@ -9,7 +9,7 @@ Accept: application/json
 GET {{host}}/api/users
 
 ### get-one-user
-GET {{host}}/api/users/543382068392136681
+GET {{host}}/api/users/545930050313572977
 
 ### login-jurjen
 POST {{host}}/api/login
@@ -19,13 +19,25 @@ Content-Type: application/json
 
 > {% client.global.set("authorized", response.body.token); %}
 
+### get-me
+GET {{host}}/api/users/me
+Authorization: Bearer {{authorized}}
+
+### get-my-notes
+GET {{host}}/api/users/notes
+Authorization: Bearer {{authorized}}
+
+### get-my-tasks
+GET {{host}}/api/users/tasks
+Authorization: Bearer {{authorized}}
+
 ### post-new-note
 POST {{host}}/api/notes
 Content-Type: application/json
 Authorization: Bearer {{authorized}}
 
 {
-  "title": "Jurjen's second Note",
+  "title": "My First Note",
   "body": "Note taking in its simplest form :-)"
 }
 

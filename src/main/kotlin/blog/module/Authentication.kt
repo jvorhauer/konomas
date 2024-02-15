@@ -11,9 +11,9 @@ import io.ktor.server.response.*
 
 fun Application.authentication(kfg: Konfig) {
   install(Authentication) {
-    jwt(kfg.realm) {
+    jwt(kfg.jwt.realm) {
       verifier(
-        JWT.require(Algorithm.HMAC256(kfg.secret)).withAudience(kfg.audience).withIssuer(kfg.issuer).build()
+        JWT.require(Algorithm.HMAC256(kfg.jwt.secret)).withAudience(kfg.jwt.audience).withIssuer(kfg.jwt.issuer).build()
       )
       validate { credential ->
         if (credential.payload.getClaim("uid").asLong() != null) {

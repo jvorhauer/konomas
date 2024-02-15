@@ -39,9 +39,9 @@ object MainTest {
        akka.persistence.snapshot-store.local.dir = "build/snapshot-${UUID.randomUUID()}"  
     """)
 
-  private val kfg: Konfig = ConfigFactory.load("application.conf").extract("jwt")
+  private val kfg: Konfig = ConfigFactory.load("application.conf").extract("konomas")
   private fun behavior(): Behavior<Void> = Behaviors.setup { ctx ->
-    embeddedServer(Netty, port = 8181, host = "localhost") {
+    embeddedServer(Netty, port = kfg.server.port, host = kfg.server.host) {
       val reader = Reader()
       val processor = ctx.spawn(Processor.create(pid, reader), "processor")
       val scheduler = ctx.system.scheduler()
@@ -60,7 +60,7 @@ object MainTest {
       routing {
         usersRoute(processor, reader, scheduler, kfg)
         loginRoute(reader, kfg)
-        authenticate(kfg.realm) {
+        authenticate(kfg.jwt.realm) {
           get("/api/test") {
             val principal = call.principal<JWTPrincipal>() ?: return@get call.respond(HttpStatusCode.Unauthorized, "no principal")
             val userId: Long? = principal.payload.getClaim("uid").asLong()
@@ -93,9 +93,11 @@ class MainTests {
 
   @Test
   fun testKonfig() {
-    val kfg = config.extract<Konfig>("jwt")
+    val kfg = config.extract<Konfig>("konomas")
     assertThat(kfg).isNotNull
-    assertThat(kfg.realm).isEqualTo("konomauth")
+    assertThat(kfg.jwt.realm).isEqualTo("konomauth")
+    assertThat(kfg.server.port).isEqualTo(8181)
+    assertThat(kfg.server.host).isEqualTo("localhost")
     println("kfg: $kfg")
   }
 }

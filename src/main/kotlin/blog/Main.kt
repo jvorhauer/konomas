@@ -28,10 +28,10 @@ import blog.write.Processor
 const val pid: String = "27"
 
 object Main {
-  private val kfg: Konfig = ConfigFactory.load("application.conf").extract("jwt")
+  private val kfg: Konfig = ConfigFactory.load("application.conf").extract("konomas")
 
   private val behavior: Behavior<Void> = Behaviors.setup { ctx ->
-    embeddedServer(Netty, port = 8080) {
+    embeddedServer(Netty, port = kfg.server.port, host = kfg.server.host) {
       val reader = Reader()
       val processor = ctx.spawn(Processor.create(pid, reader), "konomas")
       val scheduler = ctx.system.scheduler()
@@ -60,9 +60,9 @@ object Main {
     Sentry.init {options ->
       options.dsn = System.getenv("KONOMAS_SENTRY_DSN")
       options.environment = "test"
-      options.release = "1.0.10"
+      options.release = "1.0.12"
       options.tracesSampleRate = 1.0
-      options.isDebug = true
+      options.isDebug = false
     }
     ActorSystem.create(behavior, "konomas")
   }

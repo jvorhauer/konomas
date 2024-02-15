@@ -73,7 +73,7 @@ data class NoteResponse(
 )
 
 fun Route.notesRoute(processor: ActorRef<Command>, reader: Reader, scheduler: Scheduler, kfg: Konfig) =
-  authenticate(kfg.realm) {
+  authenticate(kfg.jwt.realm) {
     route("/api/notes") {
       post {
         val cnr = call.receive<CreateNoteRequest>()

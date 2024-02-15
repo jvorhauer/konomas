@@ -113,7 +113,7 @@ data class TaskResponse(
 )
 
 fun Route.tasksRoute(processor: ActorRef<Command>, reader: Reader, scheduler: Scheduler, kfg: Konfig) =
-  authenticate(kfg.realm) {
+  authenticate(kfg.jwt.realm) {
     route("/api/tasks") {
       post {
         val ctr = call.receive<CreateTaskRequest>()

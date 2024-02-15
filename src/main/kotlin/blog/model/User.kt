@@ -5,7 +5,7 @@ import java.time.Instant
 import java.time.ZoneId
 import akka.actor.typed.ActorRef
 import akka.actor.typed.Scheduler
-import akka.actor.typed.javadsl.AskPattern
+import akka.actor.typed.javadsl.AskPattern.ask
 import akka.pattern.StatusReply
 import com.auth0.jwt.JWT
 import com.auth0.jwt.algorithms.Algorithm
@@ -95,11 +95,11 @@ fun Route.loginRoute(reader: Reader, kfg: Konfig): Route =
       val loginRequest = call.receive<LoginRequest>()
       val user: User = reader.findUserByEmail(loginRequest.username) ?: return@post call.respond(HttpStatusCode.Unauthorized, "user not found")
       val token: String = JWT.create()
-        .withAudience(kfg.audience)
+        .withAudience(kfg.jwt.audience)
         .withClaim("uid", user.id)
-        .withExpiresAt(Instant.now().plusMillis(kfg.expiresIn))
-        .withIssuer(kfg.issuer)
-        .sign(Algorithm.HMAC256(kfg.secret))
+        .withExpiresAt(Instant.now().plusMillis(kfg.jwt.expiresIn))
+        .withIssuer(kfg.jwt.issuer)
+        .sign(Algorithm.HMAC256(kfg.jwt.secret))
       call.respond(hashMapOf("token" to token))
     }
   }
@@ -111,20 +111,29 @@ fun Route.usersRoute(processor: ActorRef<Command>, reader: Reader, scheduler: Sc
       val rows = call.request.queryParameters["rows"]?.toInt() ?: 10
       call.respond(reader.allUsers(rows, start).map { it.toResponse(reader) })
     }
+    authenticate(kfg.jwt.realm) {
+      get("/tasks") {
+        val userId = user(call) ?: return@get call.respond(HttpStatusCode.Unauthorized, "Unauthorized")
+        call.respond(reader.findTasksForUser(userId).map { it.toResponse() })
+      }
+      get("/me") {
+        val userId = user(call) ?: return@get call.respond(HttpStatusCode.Unauthorized, "Unauthorized")
+        val user: User = reader.find(userId) ?: return@get call.respond(HttpStatusCode.NotFound, "User not found")
+        call.respond(user.toResponse(reader))
+      }
+      get("/notes") {
+        val userId = user(call) ?: return@get call.respond(HttpStatusCode.Unauthorized, "Unauthorized")
+        call.respond(reader.findNotesForUser(userId).map { it.toResponse() })
+      }
+    }
     get("{id?}") {
       val id = call.parameters["id"] ?: return@get call.respondText("no user id specified", status = HttpStatusCode.BadRequest)
       val user: User = reader.find(id.toLong()) ?: return@get call.respondText("user not found for $id", status = HttpStatusCode.NotFound)
       call.respond(user.toResponse(reader))
     }
-    authenticate(kfg.realm) {
-      get("/tasks") {
-        val userId = user(call) ?: return@get call.respond(HttpStatusCode.Unauthorized, "Unauthorized")
-        call.respond(reader.findTasksForUser(userId).map { it.toResponse() })
-      }
-    }
     post {
       val cnu = call.receive<RegisterUserRequest>()
-      AskPattern.ask(processor, { rt -> cnu.toCommand(rt) }, Duration.ofMinutes(1), scheduler).await().let {
+      ask(processor, { rt -> cnu.toCommand(rt) }, Duration.ofMinutes(1), scheduler).await().let {
         if (it.isSuccess) {
           call.response.header("Location", "/api/users/${it.value.id}")
           call.respond(HttpStatusCode.Created, it.value)
