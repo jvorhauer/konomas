@@ -15,7 +15,7 @@ class UserTests {
        akka.persistence.snapshot-store.local.dir = "build/snapshot-${UUID.randomUUID()}"  
     """
   )
-  private val probe = testKit.createTestProbe<StatusReply<UserResponse>>().ref
+  private val probe = testKit.createTestProbe<StatusReply<User>>().ref
 
   @Test
   fun `request to command`() {
@@ -38,7 +38,7 @@ class UserTests {
 
   @Test
   fun `event to entity`() {
-    val uc = UserCreated(1L, "jurjen@vorhauer.nl", "Jurjen", "password")
+    val uc = UserCreated(nextId(), "jurjen@vorhauer.nl", "Jurjen", "password")
     val u = uc.toEntity()
     assertThat(u.id).isEqualTo(uc.id)
     assertThat(u.email).isEqualTo(uc.email)

@@ -4,7 +4,7 @@ import java.time.LocalDateTime
 import akka.Done
 import akka.actor.typed.ActorRef
 import akka.actor.typed.Scheduler
-import akka.actor.typed.javadsl.AskPattern
+import akka.actor.typed.javadsl.AskPattern.ask
 import akka.pattern.StatusReply
 import io.ktor.http.*
 import io.ktor.server.application.*
@@ -20,8 +20,8 @@ enum class TaskStatus {
 }
 
 data class Task(
-  override val id: Long,
-  val user: Long,
+  override val id: String,
+  val user: String,
   val title: String,
   val slug: String,
   val body: String,
@@ -44,28 +44,28 @@ data class Task(
 }
 
 data class CreateTaskRequest(val title: String, val body: String, val due: LocalDateTime): Request {
-  fun toCommand(user: Long, replyTo: ActorRef<StatusReply<TaskResponse>>) = CreateTask(user, title, body, due, replyTo)
+  fun toCommand(user: String, replyTo: ActorRef<StatusReply<TaskResponse>>) = CreateTask(user, title, body, due, replyTo)
 }
 
-data class UpdateTaskRequest(val id: Long, val title: String?, val body: String?, val due: LocalDateTime?, val status: TaskStatus?): Request {
-  fun toCommand(user: Long, replyTo: ActorRef<StatusReply<TaskResponse>>) = UpdateTask(user, id, title, body, due, status, replyTo)
+data class UpdateTaskRequest(val id: String, val title: String?, val body: String?, val due: LocalDateTime?, val status: TaskStatus?): Request {
+  fun toCommand(user: String, replyTo: ActorRef<StatusReply<TaskResponse>>) = UpdateTask(user, id, title, body, due, status, replyTo)
 }
 
 
 data class CreateTask(
-  val user: Long,
+  val user: String,
   val title: String,
   val body: String,
   val due: LocalDateTime,
   val replyTo: ActorRef<StatusReply<TaskResponse>>,
-  val id: Long = nextId()
+  val id: String = nextId()
 ) : Command {
   fun toEvent() = TaskCreated(id, user, title, body, due)
 }
 
 data class UpdateTask(
-  val user: Long,
-  val id: Long,
+  val user: String,
+  val id: String,
   val title: String?,
   val body: String?,
   val due: LocalDateTime?,
@@ -75,14 +75,14 @@ data class UpdateTask(
   fun toEvent() = TaskUpdated(user, id, title, body, due, status)
 }
 
-data class DeleteTask(val id: Long, val replyTo: ActorRef<StatusReply<Done>>): Command {
+data class DeleteTask(val id: String, val replyTo: ActorRef<StatusReply<Done>>): Command {
   fun toEvent() = TaskDeleted(id)
 }
 
 
 data class TaskCreated(
-  val id: Long,
-  val user: Long,
+  val id: String,
+  val user: String,
   val title: String,
   val body: String,
   val due: LocalDateTime
@@ -92,20 +92,20 @@ data class TaskCreated(
 }
 
 data class TaskUpdated(
-  val user: Long,
-  val id: Long,
+  val user: String,
+  val id: String,
   val title: String?,
   val body: String?,
   val due: LocalDateTime?,
   val status: TaskStatus?,
 ) : Event
 
-data class TaskDeleted(val id: Long): Event
+data class TaskDeleted(val id: String): Event
 
 
 data class TaskResponse(
-  val id: Long,
-  val user: Long,
+  val id: String,
+  val user: String,
   val title: String,
   val body: String,
   val due: String,
@@ -118,7 +118,7 @@ fun Route.tasksRoute(processor: ActorRef<Command>, reader: Reader, scheduler: Sc
       post {
         val ctr = call.receive<CreateTaskRequest>()
         val userId = user(call) ?: return@post call.respond(HttpStatusCode.Unauthorized, "Unauthorized")
-        AskPattern.ask(processor, { rt -> ctr.toCommand(userId, rt) }, timeout, scheduler).await().let {
+        ask(processor, { rt -> ctr.toCommand(userId, rt) }, timeout, scheduler).await().let {
           when {
               it.isSuccess -> {
                   call.response.header("Location", "/api/tasks/${it.value.id}")
@@ -134,7 +134,7 @@ fun Route.tasksRoute(processor: ActorRef<Command>, reader: Reader, scheduler: Sc
         call.respond(reader.allTasks(rows, start).map { it.toResponse() })
       }
       get("{id?}") {
-        val id = call.parameters["id"]?.toLong() ?: return@get call.respond(HttpStatusCode.NotFound, "no task id specified")
+        val id = call.parameters["id"] ?: return@get call.respond(HttpStatusCode.NotFound, "no task id specified")
         (reader.find<Task>(id) ?: return@get call.respond(HttpStatusCode.NotFound, "task not found for $id")).let {
           call.respond(it.toResponse())
         }
@@ -142,7 +142,7 @@ fun Route.tasksRoute(processor: ActorRef<Command>, reader: Reader, scheduler: Sc
       put {
         val utr = call.receive<UpdateTaskRequest>()
         val userId = user(call) ?: return@put call.respond(HttpStatusCode.Unauthorized, "Unauthorized")
-        AskPattern.ask(processor, { rt -> utr.toCommand(userId, rt) }, timeout, scheduler).await().let {
+        ask(processor, { rt -> utr.toCommand(userId, rt) }, timeout, scheduler).await().let {
           when {
             it.isSuccess -> call.respond(HttpStatusCode.OK, it.value)
             else -> call.respond(HttpStatusCode.BadRequest, it.error.localizedMessage)
@@ -150,9 +150,9 @@ fun Route.tasksRoute(processor: ActorRef<Command>, reader: Reader, scheduler: Sc
         }
       }
       delete("{id?}") {
-        val id = call.parameters["id"]?.toLong() ?: return@delete call.respond(HttpStatusCode.NotFound, "no task id specified")
-        reader.find<Task>(id) ?: return@delete call.respond(HttpStatusCode.NotFound, "task not found for $id")
-        AskPattern.ask(processor, { rt -> DeleteTask(id, rt) }, timeout, scheduler).await().let {
+        val id = call.parameters["id"] ?: return@delete call.respond(HttpStatusCode.NotFound, "no task id specified")
+        reader.findTask(id) ?: return@delete call.respond(HttpStatusCode.NotFound, "task not found for $id")
+        ask(processor, { rt -> DeleteTask(id, rt) }, timeout, scheduler).await().let {
           when {
               it.isSuccess -> call.respond(HttpStatusCode.OK, mapOf("task" to id))
               else -> call.respond(HttpStatusCode.InternalServerError, it.error.localizedMessage)

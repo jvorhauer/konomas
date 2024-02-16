@@ -52,7 +52,7 @@ Authorization: Bearer {{authorized}}
 
 {
   "title": "Make Vault story",
-  "body": "In order to deploy to production, we need to store secrets in the Vault",
+  "body": "In order to deploy to production, we need to store secrets in the <strong>Vault</strong>",
   "due": "2024-03-01T09:00:00"
 }
 
@@ -64,3 +64,7 @@ GET {{host}}/info/ready
 
 ### get-counts
 GET {{host}}/info/counts
+
+### get-one-task
+GET {{host}}/api/tasks/545930282606711300
+Authorization: Bearer {{authorized}}

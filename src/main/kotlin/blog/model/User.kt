@@ -10,7 +10,11 @@ import akka.pattern.StatusReply
 import com.auth0.jwt.JWT
 import com.auth0.jwt.algorithms.Algorithm
 import org.owasp.encoder.Encode
+import io.hypersistence.tsid.TSID
 import io.ktor.http.*
+import io.ktor.http.HttpStatusCode.Companion.BadRequest
+import io.ktor.http.HttpStatusCode.Companion.NotFound
+import io.ktor.http.HttpStatusCode.Companion.Unauthorized
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
 import io.ktor.server.request.*
@@ -24,7 +28,7 @@ data class RegisterUserRequest(
   val name: String,
   val password: String,
 ) : Request {
-  fun toCommand(replyTo: ActorRef<StatusReply<UserResponse>>): CreateUser = CreateUser(this, replyTo)
+  fun toCommand(replyTo: ActorRef<StatusReply<User>>): CreateUser = CreateUser(this, replyTo)
 }
 
 data class LoginRequest(val username: String, val password: String)
@@ -34,10 +38,10 @@ data class CreateUser(
   val email: String,
   val name: String,
   val password: String,
-  val replyTo: ActorRef<StatusReply<UserResponse>>,
-  val id: Long = nextId(),
+  val replyTo: ActorRef<StatusReply<User>>,
+  val id: String = nextId(),
 ) : Command {
-  constructor(rur: RegisterUserRequest, replyTo: ActorRef<StatusReply<UserResponse>>) : this(rur.email, rur.name, rur.password, replyTo)
+  constructor(rur: RegisterUserRequest, replyTo: ActorRef<StatusReply<User>>) : this(rur.email, rur.name, rur.password, replyTo)
 
   fun toEvent() = UserCreated(id, Encode.forHtml(email), Encode.forHtml(name), password.hashed())
 }
@@ -45,22 +49,21 @@ data class CreateUser(
 // Events
 
 data class UserCreated(
-  val id: Long,
+  val id: String,
   val email: String,
   val name: String,
   val password: String,
 ) : Event {
   fun toEntity(): User = User(id, email, name, password)
-  fun toResponse(reader: Reader) = this.toEntity().toResponse(reader)
 }
 
-data class UserDeleted(val id: Long) : Event
+data class UserDeleted(val id: String) : Event
 data class UserDeletedByEmail(val email: String) : Event
 
 // Entitites
 
 data class User(
-  override val id: Long,
+  override val id: String,
   val email: String,
   val name: String,
   val password: String,
@@ -70,7 +73,7 @@ data class User(
     id,
     email,
     name,
-    DTF.format(id.toTSID().instant.atZone(ZoneId.of("CET"))),
+    DTF.format(TSID.from(id).instant.atZone(ZoneId.of("CET"))),
     gravatar,
     reader.findNotesForUser(id).map(Note::toResponse),
     reader.findTasksForUser(id).map(Task::toResponse)
@@ -80,7 +83,7 @@ data class User(
 // Responses
 
 data class UserResponse(
-  val id: Long,
+  val id: String,
   val email: String,
   val name: String,
   val joined: String,
@@ -93,16 +96,19 @@ fun Route.loginRoute(reader: Reader, kfg: Konfig): Route =
   route("/api/login") {
     post {
       val loginRequest = call.receive<LoginRequest>()
-      val user: User = reader.findUserByEmail(loginRequest.username) ?: return@post call.respond(HttpStatusCode.Unauthorized, "user not found")
-      val token: String = JWT.create()
-        .withAudience(kfg.jwt.audience)
-        .withClaim("uid", user.id)
-        .withExpiresAt(Instant.now().plusMillis(kfg.jwt.expiresIn))
-        .withIssuer(kfg.jwt.issuer)
-        .sign(Algorithm.HMAC256(kfg.jwt.secret))
+      val user = reader.findUserByEmail(loginRequest.username) ?: return@post call.respondText("user not found", status = Unauthorized)
+      val token = createJwtToken(user.id, kfg)
       call.respond(hashMapOf("token" to token))
     }
   }
+
+fun createJwtToken(uid: String, kfg: Konfig): String = JWT.create()
+  .withAudience(kfg.jwt.audience)
+  .withClaim("uid", uid)
+  .withExpiresAt(Instant.now().plusMillis(kfg.jwt.expiresIn))
+  .withIssuer(kfg.jwt.issuer)
+  .sign(Algorithm.HMAC256(kfg.jwt.secret))
+
 
 fun Route.usersRoute(processor: ActorRef<Command>, reader: Reader, scheduler: Scheduler, kfg: Konfig): Route =
   route("/api/users") {
@@ -113,22 +119,22 @@ fun Route.usersRoute(processor: ActorRef<Command>, reader: Reader, scheduler: Sc
     }
     authenticate(kfg.jwt.realm) {
       get("/tasks") {
-        val userId = user(call) ?: return@get call.respond(HttpStatusCode.Unauthorized, "Unauthorized")
+        val userId = user(call) ?: return@get call.respondText("Unauthorized", status = Unauthorized)
         call.respond(reader.findTasksForUser(userId).map { it.toResponse() })
       }
       get("/me") {
-        val userId = user(call) ?: return@get call.respond(HttpStatusCode.Unauthorized, "Unauthorized")
-        val user: User = reader.find(userId) ?: return@get call.respond(HttpStatusCode.NotFound, "User not found")
+        val id = user(call) ?: return@get call.respondText("Unauthorized", status = Unauthorized)
+        val user = reader.findUser(id) ?: return@get call.respondText("user not found for $id", status = NotFound)
         call.respond(user.toResponse(reader))
       }
       get("/notes") {
-        val userId = user(call) ?: return@get call.respond(HttpStatusCode.Unauthorized, "Unauthorized")
+        val userId = user(call) ?: return@get call.respond(Unauthorized, "Unauthorized")
         call.respond(reader.findNotesForUser(userId).map { it.toResponse() })
       }
     }
     get("{id?}") {
-      val id = call.parameters["id"] ?: return@get call.respondText("no user id specified", status = HttpStatusCode.BadRequest)
-      val user: User = reader.find(id.toLong()) ?: return@get call.respondText("user not found for $id", status = HttpStatusCode.NotFound)
+      val id = call.parameters["id"] ?: return@get call.respondText("no user id specified", status = BadRequest)
+      val user: User = reader.findUser(id) ?: return@get call.respondText("user not found for $id", status = NotFound)
       call.respond(user.toResponse(reader))
     }
     post {
@@ -136,9 +142,9 @@ fun Route.usersRoute(processor: ActorRef<Command>, reader: Reader, scheduler: Sc
       ask(processor, { rt -> cnu.toCommand(rt) }, Duration.ofMinutes(1), scheduler).await().let {
         if (it.isSuccess) {
           call.response.header("Location", "/api/users/${it.value.id}")
-          call.respond(HttpStatusCode.Created, it.value)
+          call.respond(HttpStatusCode.Created, hashMapOf("token" to createJwtToken(it.value.id, kfg)))
         } else {
-          call.respond(HttpStatusCode.BadRequest, it.error.localizedMessage)
+          call.respondText(it.error.message ?: "unknown error", status = BadRequest)
         }
       }
     }

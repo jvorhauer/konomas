@@ -63,7 +63,7 @@ object MainTest {
         authenticate(kfg.jwt.realm) {
           get("/api/test") {
             val principal = call.principal<JWTPrincipal>() ?: return@get call.respond(HttpStatusCode.Unauthorized, "no principal")
-            val userId: Long? = principal.payload.getClaim("uid").asLong()
+            val userId = principal.payload.getClaim("uid").asString()
             val expireAt = principal.expiresAt?.time?.minus(System.currentTimeMillis())
             var username = "???"
             if (userId != null) {

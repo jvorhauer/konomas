@@ -25,7 +25,7 @@ import blog.read.Reader
 import blog.read.info
 import blog.write.Processor
 
-const val pid: String = "27"
+const val pid: String = "28"
 
 object Main {
   private val kfg: Konfig = ConfigFactory.load("application.conf").extract("konomas")

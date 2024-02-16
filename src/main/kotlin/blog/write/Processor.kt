@@ -59,7 +59,7 @@ class Processor(pid: PersistenceId, private val reader: Reader) : EventSourcedBe
     if (state.findUserByEmail(cmd.email) != null) {
       Effect().none().thenReply(cmd.replyTo) { StatusReply.error("${cmd.email} already registered") }
     } else {
-      cmd.toEvent().let { Effect().persist(it).thenReply(cmd.replyTo) { _ -> StatusReply.success(it.toResponse(reader)) } }
+      cmd.toEvent().let { Effect().persist(it).thenReply(cmd.replyTo) { _ -> StatusReply.success(it.toEntity()) } }
     }
 
   private fun onCreateNote(state: State, cmd: CreateNote): Effect<Event, State> =

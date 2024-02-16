@@ -8,6 +8,7 @@ import java.time.LocalDateTime
 import java.time.ZoneId
 import akka.actor.typed.Scheduler
 import akka.actor.typed.javadsl.AskPattern
+import io.hypersistence.tsid.TSID
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
@@ -18,55 +19,55 @@ import kotlinx.coroutines.future.await
 import blog.read.Reader
 
 data class CreateNoteRequest(val title: String, val body: String) {
-  fun toCommand(user: Long, replyTo: ActorRef<StatusReply<NoteResponse>>) = CreateNote(user, title, body, replyTo)
+  fun toCommand(user: String, replyTo: ActorRef<StatusReply<NoteResponse>>) = CreateNote(user, title, body, replyTo)
 }
 
-data class UpdateNoteRequest(val id: Long, val title: String?, val body: String?) {
-  fun toCommand(user: Long, rt: ActorRef<StatusReply<NoteResponse>>) = UpdateNote(user, id, title, body, rt)
+data class UpdateNoteRequest(val id: String, val title: String?, val body: String?) {
+  fun toCommand(user: String, rt: ActorRef<StatusReply<NoteResponse>>) = UpdateNote(user, id, title, body, rt)
 }
 
 data class CreateNote(
-  val user: Long,
+  val user: String,
   val title: String,
   val body: String,
   val replyTo: ActorRef<StatusReply<NoteResponse>>,
-  val id: Long = nextId()
+  val id: String = nextId()
 ) : Command {
   fun toEvent() = NoteCreated(id, user, Encode.forHtml(title), Encode.forHtml(body))
 }
 
-data class UpdateNote(val user: Long, val id: Long, val title: String?, val body: String?, val replyTo: ActorRef<StatusReply<NoteResponse>>): Command {
+data class UpdateNote(val user: String, val id: String, val title: String?, val body: String?, val replyTo: ActorRef<StatusReply<NoteResponse>>): Command {
   fun toEvent() = NoteUpdated(id, user, title, body)
 }
 
-data class DeleteNote(val id: Long, val rt: ActorRef<StatusReply<Done>>): Command {
+data class DeleteNote(val id: String, val rt: ActorRef<StatusReply<Done>>): Command {
   fun toEvent() = NoteDeleted(id)
 }
 
-data class NoteCreated(val id: Long, val user: Long, val title: String, val body: String) : Event {
+data class NoteCreated(val id: String, val user: String, val title: String, val body: String) : Event {
   fun toEntity() = Note(id, user, title, slugify(title), body)
   fun toResponse() = this.toEntity().toResponse()
 }
 
-data class NoteUpdated(val id: Long, val user: Long, val title: String?, val body: String?): Event
+data class NoteUpdated(val id: String, val user: String, val title: String?, val body: String?): Event
 
-data class NoteDeleted(val id: Long): Event
+data class NoteDeleted(val id: String): Event
 
 data class Note(
-  override val id: Long,
-  val user: Long,
+  override val id: String,
+  val user: String,
   val title: String,
   val slug: String,
   val body: String
 ): Entity {
-  constructor(id: Long, user: Long, title: String, body: String): this(id, user, title, slugify(title), body)
+  constructor(id: String, user: String, title: String, body: String): this(id, user, title, slugify(title), body)
   fun update(nu: NoteUpdated): Note = this.copy(title = nu.title ?: this.title, body = nu.body ?: this.body)
-  fun toResponse() = NoteResponse(id, user, DTF.format(LocalDateTime.ofInstant(id.toTSID().instant, ZoneId.of("CET"))), title, body)
+  fun toResponse() = NoteResponse(id, user, DTF.format(LocalDateTime.ofInstant(TSID.from(id).instant, ZoneId.of("CET"))), title, body)
 }
 
 data class NoteResponse(
-  val id: Long,
-  val user: Long,
+  val id: String,
+  val user: String,
   val created: String,
   val title: String,
   val body: String
@@ -93,12 +94,12 @@ fun Route.notesRoute(processor: ActorRef<Command>, reader: Reader, scheduler: Sc
         call.respond(reader.allNotes(rows, start).map { it.toResponse() })
       }
       get("{id?}") {
-        val id = call.parameters["id"]?.toLong() ?: return@get call.respond(HttpStatusCode.NotFound, "note id not specified")
-        val note: Note = reader.find(id) ?: return@get call.respond(HttpStatusCode.NotFound, "note not found for $id")
+        val id = call.parameters["id"] ?: return@get call.respond(HttpStatusCode.NotFound, "note id not specified")
+        val note = reader.findNote(id) ?: return@get call.respond(HttpStatusCode.NotFound, "note not found for $id")
         call.respond(note.toResponse())
       }
       delete("{id?}") {
-        val id = call.parameters["id"]?.toLong() ?: return@delete call.respond(HttpStatusCode.NotFound, "note id not specified")
+        val id = call.parameters["id"] ?: return@delete call.respond(HttpStatusCode.NotFound, "note id not specified")
         reader.findNote(id) ?: return@delete call.respond(HttpStatusCode.NotFound, "note not found for $id")
         AskPattern.ask(processor, { rt -> DeleteNote(id, rt) }, timeout, scheduler).await().let {
           when {

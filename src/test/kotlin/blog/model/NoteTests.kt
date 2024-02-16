@@ -18,7 +18,7 @@ class NoteTests {
   private val probeNoteRes = testKit.createTestProbe<StatusReply<NoteResponse>>().ref
   private val probeNoteDel = testKit.createTestProbe<StatusReply<Done>>().ref
 
-  private val userId: Long = nextId()
+  private val userId = nextId()
 
   @Test
   fun `create request to command to event to entity`() {

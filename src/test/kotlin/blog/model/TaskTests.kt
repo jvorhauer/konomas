@@ -6,6 +6,7 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import java.time.LocalDateTime
 import java.util.UUID
+import io.hypersistence.tsid.TSID
 
 class TaskTests {
 
@@ -43,7 +44,7 @@ class TaskTests {
     assertThat(task.user).isEqualTo(userId).isEqualTo(tc.user).isEqualTo(ct.user)
 
     val res = task.toResponse()
-    assertThat(res.id).isEqualTo(task.id)
+    assertThat(res.id).isEqualTo(TSID.from(task.id).toString())
     assertThat(res.title).isEqualTo(task.title)
     assertThat(res.body).isEqualTo(task.body)
     assertThat(res.due).isEqualTo(DTF.format(task.due))
@@ -53,7 +54,7 @@ class TaskTests {
   @Test
   fun `update task request, command and event`() {
     val taskId = nextId()
-    val utr = UpdateTaskRequest(taskId, "new title", "new body", now().plusDays(3), TaskStatus.DOING)
+    val utr = UpdateTaskRequest(TSID.from(taskId).toString(), "new title", "new body", now().plusDays(3), TaskStatus.DOING)
     val ut = utr.toCommand(userId, probeTaskRes)
     assertThat(ut.id).isEqualTo(taskId)
     assertThat(ut.user).isEqualTo(userId)

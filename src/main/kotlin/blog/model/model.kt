@@ -1,6 +1,5 @@
 package blog.model
 
-import io.hypersistence.tsid.TSID
 import java.io.Serializable
 import java.net.InetAddress
 import java.nio.charset.StandardCharsets
@@ -10,6 +9,7 @@ import java.time.Duration
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import io.hypersistence.tsid.TSID
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
 import io.ktor.server.auth.jwt.*
@@ -18,10 +18,10 @@ interface Request : Serializable
 interface Command : Serializable
 interface Event   : Serializable
 interface Entity  : Serializable {
-  val id: Long
+  val id: String
 }
 interface Response : Serializable {
-  val id: Long
+  val id: String
 }
 
 object Hasher {
@@ -38,11 +38,10 @@ private val idFactory = TSID.Factory.builder()
   .withRandom(SecureRandom.getInstance("SHA1PRNG", "SUN"))
   .withNodeBits(8)
   .withNode(InetAddress.getLocalHost().address[3].toInt()and(0xFF)).build()
-fun nextId(): Long = idFactory.generate().toLong()
+fun nextId(): String = idFactory.generate().toString()
 
 fun slugify(s: String): String = s.trim().replace("  ", " ").lowercase().replace("[^ a-z0-9]".toRegex(), "").replace(' ', '-')
 
-fun Long.toTSID(): TSID = TSID.from(this)
 fun String.hashed() = Hasher.hash(this)
 
 data class Counts(
@@ -69,4 +68,4 @@ data class Konfig(
 )
 
 val timeout: Duration = Duration.ofSeconds(10)
-fun user(call: ApplicationCall): Long? = call.principal<JWTPrincipal>()?.payload?.getClaim("uid")?.asLong()
+fun user(call: ApplicationCall): String? = call.principal<JWTPrincipal>()?.payload?.getClaim("uid")?.asString()

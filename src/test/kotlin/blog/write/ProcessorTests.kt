@@ -1,17 +1,17 @@
 package blog.write
 
+import java.util.UUID
+import java.util.concurrent.atomic.AtomicInteger
 import akka.actor.testkit.typed.javadsl.TestKitJunitResource
 import akka.pattern.StatusReply
+import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.Test
 import blog.model.CreateNote
 import blog.model.CreateUser
 import blog.model.NoteResponse
 import blog.model.UpdateNote
-import blog.model.UserResponse
+import blog.model.User
 import blog.read.Reader
-import org.assertj.core.api.Assertions.assertThat
-import org.junit.jupiter.api.Test
-import java.util.UUID
-import java.util.concurrent.atomic.AtomicInteger
 
 class ProcessorTests {
   private val counter = AtomicInteger(0)
@@ -28,12 +28,12 @@ class ProcessorTests {
   fun `should register user`() {
     val reader = Reader()
     val prc = testKit.spawn(Processor.create(aid(), reader))
-    val probe = testKit.createTestProbe<StatusReply<UserResponse>>()
+    val probe = testKit.createTestProbe<StatusReply<User>>()
 
     prc.tell(CreateUser("a@b.c","a", "welkom123", probe.ref))
     val result = probe.receiveMessage()
     assertThat(result.isSuccess).isTrue
-    assertThat(result.value.javaClass.simpleName).isEqualTo("UserResponse")
+    assertThat(result.value.javaClass.simpleName).isEqualTo("User")
     val ur = reader.findUserByEmail("a@b.c")
     assertThat(ur).isNotNull
     assertThat(ur?.id).isEqualTo(result.value.id)
@@ -46,7 +46,7 @@ class ProcessorTests {
   fun `should not register a user twice`() {
     val reader = Reader()
     val prc = testKit.spawn(Processor.create(aid(), reader))
-    val probe = testKit.createTestProbe<StatusReply<UserResponse>>()
+    val probe = testKit.createTestProbe<StatusReply<User>>()
 
     prc.tell(CreateUser("a@b.c","a", "welkom123", probe.ref))
     val result = probe.receiveMessage()
@@ -68,7 +68,7 @@ class ProcessorTests {
   fun `should save a note`() {
     val reader = Reader()
     val prc = testKit.spawn(Processor.create(aid(), reader))
-    val userProbe = testKit.createTestProbe<StatusReply<UserResponse>>()
+    val userProbe = testKit.createTestProbe<StatusReply<User>>()
     val noteProbe = testKit.createTestProbe<StatusReply<NoteResponse>>()
 
     prc.tell(CreateUser("a@b.c","a", "welkom123", userProbe.ref))
