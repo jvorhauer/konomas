@@ -1,13 +1,13 @@
 package blog.model
 
+import java.time.ZoneId
+import java.time.ZonedDateTime
 import akka.Done
 import akka.actor.typed.ActorRef
-import akka.pattern.StatusReply
-import org.owasp.encoder.Encode
-import java.time.LocalDateTime
-import java.time.ZoneId
 import akka.actor.typed.Scheduler
 import akka.actor.typed.javadsl.AskPattern
+import akka.pattern.StatusReply
+import org.owasp.encoder.Encode
 import io.hypersistence.tsid.TSID
 import io.ktor.http.*
 import io.ktor.server.application.*
@@ -58,11 +58,12 @@ data class Note(
   val user: String,
   val title: String,
   val slug: String,
-  val body: String
+  val body: String,
+  val created: ZonedDateTime = TSID.from(id).instant.atZone(ZoneId.of("CET")),
 ): Entity {
   constructor(id: String, user: String, title: String, body: String): this(id, user, title, slugify(title), body)
-  fun update(nu: NoteUpdated): Note = this.copy(title = nu.title ?: this.title, body = nu.body ?: this.body)
-  fun toResponse() = NoteResponse(id, user, DTF.format(LocalDateTime.ofInstant(TSID.from(id).instant, ZoneId.of("CET"))), title, body)
+  fun update(nu: NoteUpdated): Note = this.copy(title = nu.title ?: this.title, slug = slugify(nu.title ?: this.title), body = nu.body ?: this.body)
+  fun toResponse() = NoteResponse(id, user, DTF.format(created), title, slug, body)
 }
 
 data class NoteResponse(
@@ -70,6 +71,7 @@ data class NoteResponse(
   val user: String,
   val created: String,
   val title: String,
+  val slug: String,
   val body: String
 )
 

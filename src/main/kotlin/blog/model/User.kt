@@ -3,6 +3,7 @@ package blog.model
 import java.time.Duration
 import java.time.Instant
 import java.time.ZoneId
+import java.time.ZonedDateTime
 import akka.actor.typed.ActorRef
 import akka.actor.typed.Scheduler
 import akka.actor.typed.javadsl.AskPattern.ask
@@ -67,13 +68,14 @@ data class User(
   val email: String,
   val name: String,
   val password: String,
-  val gravatar: String = gravatarize(email)
+  val gravatar: String = gravatarize(email),
+  val joined: ZonedDateTime = TSID.from(id).instant.atZone(ZoneId.of("CET"))
 ) : Entity {
   fun toResponse(reader: Reader): UserResponse = UserResponse(
     id,
     email,
     name,
-    DTF.format(TSID.from(id).instant.atZone(ZoneId.of("CET"))),
+    DTF.format(joined),
     gravatar,
     reader.findNotesForUser(id).map(Note::toResponse),
     reader.findTasksForUser(id).map(Task::toResponse)

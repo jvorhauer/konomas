@@ -1,11 +1,14 @@
 package blog.model
 
 import java.time.LocalDateTime
+import java.time.ZoneId
+import java.time.ZonedDateTime
 import akka.Done
 import akka.actor.typed.ActorRef
 import akka.actor.typed.Scheduler
 import akka.actor.typed.javadsl.AskPattern.ask
 import akka.pattern.StatusReply
+import io.hypersistence.tsid.TSID
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
@@ -27,7 +30,8 @@ data class Task(
   val body: String,
   val due: LocalDateTime,
   val status: TaskStatus = TaskStatus.TODO,
-  val private: Boolean = true
+  val private: Boolean = true,
+  val created: ZonedDateTime = TSID.from(id).instant.atZone(ZoneId.of("CET"))
 ) : Entity {
   fun update(tu: TaskUpdated): Task = this.copy(
     title = tu.title ?: this.title,
@@ -36,7 +40,7 @@ data class Task(
     due = tu.due ?: this.due,
     status = tu.status ?: this.status
   )
-  fun toResponse() = TaskResponse(id, user, title, body, DTF.format(due), status.name)
+  fun toResponse() = TaskResponse(id,DTF.format(created), user, title, body, DTF.format(due), status.name)
 
   companion object {
     val clazz = Task::class
@@ -105,6 +109,7 @@ data class TaskDeleted(val id: String): Event
 
 data class TaskResponse(
   val id: String,
+  val created: String,
   val user: String,
   val title: String,
   val body: String,
