@@ -9,6 +9,7 @@ import java.time.Duration
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import org.owasp.encoder.Encode
 import io.hypersistence.tsid.TSID
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
@@ -43,6 +44,7 @@ fun nextId(): String = idFactory.generate().toString()
 fun slugify(s: String): String = s.trim().replace("  ", " ").lowercase().replace("[^ a-z0-9]".toRegex(), "").replace(' ', '-')
 
 fun String.hashed() = Hasher.hash(this)
+fun String?.encode(): String? = if (this == null) null else Encode.forHtml(this)
 
 data class Counts(
   val users: Int,

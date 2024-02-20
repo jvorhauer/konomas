@@ -19,11 +19,11 @@ import kotlinx.coroutines.future.await
 import blog.read.Reader
 
 data class CreateNoteRequest(val title: String, val body: String) {
-  fun toCommand(user: String, replyTo: ActorRef<StatusReply<NoteResponse>>) = CreateNote(user, title, body, replyTo)
+  fun toCommand(user: String, replyTo: ActorRef<StatusReply<NoteResponse>>) = CreateNote(user, Encode.forHtml(title), Encode.forHtml(body), replyTo)
 }
 
 data class UpdateNoteRequest(val id: String, val title: String?, val body: String?) {
-  fun toCommand(user: String, rt: ActorRef<StatusReply<NoteResponse>>) = UpdateNote(user, id, title, body, rt)
+  fun toCommand(user: String, rt: ActorRef<StatusReply<NoteResponse>>) = UpdateNote(user, id, title.encode(), body.encode(), rt)
 }
 
 data class CreateNote(
@@ -33,7 +33,7 @@ data class CreateNote(
   val replyTo: ActorRef<StatusReply<NoteResponse>>,
   val id: String = nextId()
 ) : Command {
-  fun toEvent() = NoteCreated(id, user, Encode.forHtml(title), Encode.forHtml(body))
+  fun toEvent() = NoteCreated(id, user, title, body)
 }
 
 data class UpdateNote(val user: String, val id: String, val title: String?, val body: String?, val replyTo: ActorRef<StatusReply<NoteResponse>>): Command {
@@ -63,7 +63,7 @@ data class Note(
 ): Entity {
   constructor(id: String, user: String, title: String, body: String): this(id, user, title, slugify(title), body)
   fun update(nu: NoteUpdated): Note = this.copy(title = nu.title ?: this.title, slug = slugify(nu.title ?: this.title), body = nu.body ?: this.body)
-  fun toResponse() = NoteResponse(id, user, DTF.format(created), title, slug, body)
+  fun toResponse() = NoteResponse(id, user, DTF.format(created), title, slug, body.replace("\n", "<br>"))
 }
 
 data class NoteResponse(
@@ -99,6 +99,16 @@ fun Route.notesRoute(processor: ActorRef<Command>, reader: Reader, scheduler: Sc
         val id = call.parameters["id"] ?: return@get call.respond(HttpStatusCode.NotFound, "note id not specified")
         val note = reader.findNote(id) ?: return@get call.respond(HttpStatusCode.NotFound, "note not found for $id")
         call.respond(note.toResponse())
+      }
+      put {
+        val unr = call.receive<UpdateNoteRequest>()
+        val userId = user(call) ?: return@put call.respond(HttpStatusCode.Unauthorized, "Unauthorized")
+        AskPattern.ask(processor, { rt -> unr.toCommand(userId, rt) }, timeout, scheduler).await().let {
+          when {
+            it.isSuccess -> call.respond(HttpStatusCode.OK, it.value)
+            else -> call.respond(HttpStatusCode.BadRequest, it.error.localizedMessage)
+          }
+        }
       }
       delete("{id?}") {
         val id = call.parameters["id"] ?: return@delete call.respond(HttpStatusCode.NotFound, "note id not specified")

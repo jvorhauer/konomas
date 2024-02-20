@@ -58,7 +58,6 @@ class Reader(
   fun counts(): Counts = Counts(users.size, notes.size, tasks.size)
 
   fun processEvent(e: Event) {
-    logger.info("processEvent: {}", e)
     when (e) {
       is UserCreated -> users[e.id] = e.toEntity()
       is UserDeleted -> users.remove(e.id)

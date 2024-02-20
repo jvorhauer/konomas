@@ -37,8 +37,8 @@ Content-Type: application/json
 Authorization: Bearer {{authorized}}
 
 {
-  "title": "My First Note",
-  "body": "Note taking in its simplest form :-)"
+  "title": "My Second Note",
+  "body": "More notes is just better!"
 }
 
 ### get-all-notes

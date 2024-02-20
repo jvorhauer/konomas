@@ -6,6 +6,7 @@ import akka.pattern.StatusReply
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import java.util.UUID
+import org.owasp.encoder.Encode
 
 class NoteTests {
 
@@ -65,6 +66,11 @@ class NoteTests {
     assertThat(updated.user).isEqualTo(userId)
     assertThat(updated.title).isEqualTo(run.title)
     assertThat(updated.body).isEqualTo(run.body)
+
+    var str = Encode.forHtml("")
+    assertThat(str).isEmpty()
+    str = Encode.forHtml(null)
+    assertThat(str).isNotNull();
   }
 
   @Test

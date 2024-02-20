@@ -131,7 +131,7 @@ fun Route.usersRoute(processor: ActorRef<Command>, reader: Reader, scheduler: Sc
       }
       get("/notes") {
         val userId = user(call) ?: return@get call.respond(Unauthorized, "Unauthorized")
-        call.respond(reader.findNotesForUser(userId).map { it.toResponse() })
+        call.respond(reader.findNotesForUser(userId).sortedBy { it.created }.map { it.toResponse() })
       }
     }
     get("{id?}") {
