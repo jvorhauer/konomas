@@ -63,7 +63,7 @@ data class Note(
 ): Entity {
   constructor(id: String, user: String, title: String, body: String): this(id, user, title, slugify(title), body)
   fun update(nu: NoteUpdated): Note = this.copy(title = nu.title ?: this.title, slug = slugify(nu.title ?: this.title), body = nu.body ?: this.body)
-  fun toResponse() = NoteResponse(id, user, DTF.format(created), title, slug, body.replace("\n", "<br>"))
+  fun toResponse() = NoteResponse(id, user, DTF.format(created), title, slug, body)
 }
 
 data class NoteResponse(

@@ -1,12 +1,14 @@
 package blog.model
 
+import java.io.Serializable
+
 data class State(
-  private val users: Map<String, User>      = mapOf(),
-  private val notes: Map<String, Note>      = mapOf(),
-  private val tasks: Map<String, Task>      = mapOf(),
-  private val tags : Map<String, Tag>       = mapOf(),
-  private val recovered: Boolean          = false
-) {
+  private val users: Map<String, User> = mapOf(),
+  private val notes: Map<String, Note> = mapOf(),
+  private val tasks: Map<String, Task> = mapOf(),
+  private val tags : Map<String, Tag>  = mapOf(),
+  private val recovered: Boolean       = false
+): Serializable {
   fun save(u: User)                 : State      = this.copy(users = this.users.minus(u.id).plus(u.id to u))
   fun findUser(id: String)          : User?      = users[id]
   fun findUserByEmail(email: String): User?      = users.values.find { it.email == email }
