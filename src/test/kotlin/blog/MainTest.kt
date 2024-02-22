@@ -28,6 +28,7 @@ import io.ktor.server.routing.*
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import java.util.UUID
+import blog.model.encode
 
 object MainTest {
 
@@ -99,5 +100,17 @@ class MainTests {
     assertThat(kfg.server.port).isEqualTo(8181)
     assertThat(kfg.server.host).isEqualTo("localhost")
     println("kfg: $kfg")
+  }
+
+  @Test
+  fun testEncoding() {
+    var str = "Test with <h1>html tags</h1>"
+    assertThat(str.encode()).doesNotContain("<").doesNotContain(">")
+
+    str = "Test with \" and & and '"
+    assertThat(str.encode()).isEqualTo(str)
+
+    str = "and now with [h1]square brackets[/h1]"
+    assertThat(str.encode()).isEqualTo(str)
   }
 }

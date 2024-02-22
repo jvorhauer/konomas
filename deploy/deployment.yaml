@@ -12,7 +12,7 @@ spec:
     spec:
       containers:
         - name: konomas
-          image: ghcr.io/jvorhauer/konomas:1.0.12
+          image: ghcr.io/jvorhauer/konomas:1.0.13
           env:
             - name: ASTRA_USERNAME
               valueFrom:

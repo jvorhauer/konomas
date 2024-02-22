@@ -10,7 +10,6 @@ import akka.actor.typed.javadsl.AskPattern.ask
 import akka.pattern.StatusReply
 import com.auth0.jwt.JWT
 import com.auth0.jwt.algorithms.Algorithm
-import org.owasp.encoder.Encode
 import io.hypersistence.tsid.TSID
 import io.ktor.http.*
 import io.ktor.http.HttpStatusCode.Companion.BadRequest
@@ -44,7 +43,7 @@ data class CreateUser(
 ) : Command {
   constructor(rur: RegisterUserRequest, replyTo: ActorRef<StatusReply<User>>) : this(rur.email, rur.name, rur.password, replyTo)
 
-  fun toEvent() = UserCreated(id, Encode.forHtml(email), Encode.forHtml(name), password.hashed())
+  fun toEvent() = UserCreated(id, email, name.encode(), password.hashed())
 }
 
 // Events

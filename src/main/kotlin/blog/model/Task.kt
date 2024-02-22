@@ -8,7 +8,6 @@ import akka.actor.typed.ActorRef
 import akka.actor.typed.Scheduler
 import akka.actor.typed.javadsl.AskPattern.ask
 import akka.pattern.StatusReply
-import org.owasp.encoder.Encode
 import io.hypersistence.tsid.TSID
 import io.ktor.http.*
 import io.ktor.server.application.*
@@ -49,11 +48,11 @@ data class Task(
 }
 
 data class CreateTaskRequest(val title: String, val body: String, val due: LocalDateTime): Request {
-  fun toCommand(user: String, replyTo: ActorRef<StatusReply<TaskResponse>>) = CreateTask(user, Encode.forHtml(title), Encode.forHtml(body), due, replyTo)
+  fun toCommand(user: String, replyTo: ActorRef<StatusReply<TaskResponse>>) = CreateTask(user, title.encode(), body.encode(), due, replyTo)
 }
 
 data class UpdateTaskRequest(val id: String, val title: String?, val body: String?, val due: LocalDateTime?, val status: TaskStatus?): Request {
-  fun toCommand(user: String, replyTo: ActorRef<StatusReply<TaskResponse>>) = UpdateTask(user, id, title.encode(), body.encode(), due, status, replyTo)
+  fun toCommand(user: String, replyTo: ActorRef<StatusReply<TaskResponse>>) = UpdateTask(user, id, title.mencode(), body.mencode(), due, status, replyTo)
 }
 
 

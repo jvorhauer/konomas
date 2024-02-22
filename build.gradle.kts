@@ -71,7 +71,6 @@ dependencies {
 
   implementation("io.hypersistence:hypersistence-tsid:2.1.1")
   implementation("io.netty:netty-all:4.1.106.Final")
-  implementation("org.owasp.encoder:encoder:1.2.3")
   implementation("io.github.microutils:kotlin-logging-jvm:3.0.5")
   implementation("ch.qos.logback:logback-classic:1.4.14")
   implementation("io.sentry:sentry:7.2.0")

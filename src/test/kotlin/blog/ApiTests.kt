@@ -245,7 +245,6 @@ class ApiTests {
       assertThat(response.status).isEqualTo(HttpStatusCode.OK)
       val ur = response.body<UserResponse>()
       assertThat(ur.tasks).hasSize(1)
-      println("ur: $ur")
 
       response = client.get("http://localhost:8181/info/counts")
       println(response.body<Counts>())

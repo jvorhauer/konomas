@@ -7,7 +7,6 @@ import akka.actor.typed.ActorRef
 import akka.actor.typed.Scheduler
 import akka.actor.typed.javadsl.AskPattern
 import akka.pattern.StatusReply
-import org.owasp.encoder.Encode
 import io.hypersistence.tsid.TSID
 import io.ktor.http.*
 import io.ktor.server.application.*
@@ -19,11 +18,11 @@ import kotlinx.coroutines.future.await
 import blog.read.Reader
 
 data class CreateNoteRequest(val title: String, val body: String) {
-  fun toCommand(user: String, replyTo: ActorRef<StatusReply<NoteResponse>>) = CreateNote(user, Encode.forHtml(title), Encode.forHtml(body), replyTo)
+  fun toCommand(user: String, replyTo: ActorRef<StatusReply<NoteResponse>>) = CreateNote(user, title.encode(), body.encode(), replyTo)
 }
 
 data class UpdateNoteRequest(val id: String, val title: String?, val body: String?) {
-  fun toCommand(user: String, rt: ActorRef<StatusReply<NoteResponse>>) = UpdateNote(user, id, title.encode(), body.encode(), rt)
+  fun toCommand(user: String, rt: ActorRef<StatusReply<NoteResponse>>) = UpdateNote(user, id, title.mencode(), body.mencode(), rt)
 }
 
 data class CreateNote(
