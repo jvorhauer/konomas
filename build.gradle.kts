@@ -41,6 +41,7 @@ repositories {
 
 dependencies {
   implementation(platform("com.typesafe.akka:akka-bom_2.13:2.9.1"))
+  implementation(platform("com.fasterxml.jackson:jackson-bom:2.16.1"))
 
   implementation("io.ktor:ktor-server-core-jvm")
   implementation("io.ktor:ktor-server-netty-jvm")
@@ -50,8 +51,8 @@ dependencies {
   implementation("io.ktor:ktor-server-status-pages")
   implementation("io.ktor:ktor-server-cors")
   implementation("io.ktor:ktor-serialization-jackson")
-  implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.16.1")
-  implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.16.1")
+  implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
+  implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310")
   implementation("io.ktor:ktor-server-auth")
   implementation("io.ktor:ktor-server-auth-jwt")
 
