@@ -33,8 +33,10 @@ import blog.model.TaskDeleted
 import blog.model.TaskUpdated
 import blog.model.UpdateNote
 import blog.model.UpdateTask
+import blog.model.UpdateUser
 import blog.model.UserCreated
 import blog.model.UserDeleted
+import blog.model.UserUpdated
 import blog.read.Reader
 
 private val onFail = SupervisorStrategy.restartWithBackoff(Duration.ofMillis(200), Duration.ofSeconds(5), 0.1)
@@ -46,7 +48,8 @@ class Processor(pid: PersistenceId, private val reader: Reader) : EventSourcedBe
 
   override fun commandHandler(): CommandHandler<Command, Event, State> = newCommandHandlerBuilder()
     .forAnyState()
-    .onCommand(CreateUser::class.java, this::onRegisterUser)
+    .onCommand(CreateUser::class.java, this::onCreateUser)
+    .onCommand(UpdateUser::class.java, this::onUpdateUser)
     .onCommand(CreateNote::class.java, this::onCreateNote)
     .onCommand(UpdateNote::class.java, this::onUpdateNote)
     .onCommand(DeleteNote::class.java, this::onDeleteNote)
@@ -55,11 +58,18 @@ class Processor(pid: PersistenceId, private val reader: Reader) : EventSourcedBe
     .onCommand(DeleteTask::class.java, this::onDeleteTask)
     .build()
 
-  private fun onRegisterUser(state: State, cmd: CreateUser): Effect<Event, State> =
+  private fun onCreateUser(state: State, cmd: CreateUser): Effect<Event, State> =
     if (state.findUserByEmail(cmd.email) != null) {
       Effect().none().thenReply(cmd.replyTo) { StatusReply.error("${cmd.email} already registered") }
     } else {
       cmd.toEvent().let { Effect().persist(it).thenReply(cmd.replyTo) { _ -> StatusReply.success(it.toEntity()) } }
+    }
+
+  private fun onUpdateUser(state: State, cmd: UpdateUser): Effect<Event, State> =
+    if (state.findUser(cmd.id) != null) {
+      cmd.toEvent().let { Effect().persist(it).thenReply(cmd.replyTo) { st -> StatusReply.success(st.findUser(it.id))} }
+    } else {
+      Effect().none().thenReply(cmd.replyTo) { StatusReply.error("User with id ${cmd.id} not found") }
     }
 
   private fun onCreateNote(state: State, cmd: CreateNote): Effect<Event, State> =
@@ -113,6 +123,7 @@ class Processor(pid: PersistenceId, private val reader: Reader) : EventSourcedBe
   override fun eventHandler(): EventHandler<State, Event> = newEventHandlerBuilder()
     .forAnyState()
     .onEvent(UserCreated::class.java) { state, event -> state.save(event.toEntity()).also { reader.processEvent(event) } }
+    .onEvent(UserUpdated::class.java) { state, event -> (state.findUser(event.id)?.let { state.save(it.update(event)) } ?: state).also { reader.processEvent(event) }}
     .onEvent(UserDeleted::class.java) { state, event -> state.deleteUser(event.id).also { reader.processEvent(event) } }
     .onEvent(NoteCreated::class.java) { state, event -> state.save(event.toEntity()).also { reader.processEvent(event) } }
     .onEvent(NoteUpdated::class.java) { state, event -> (state.findNote(event.id)?.let { state.save(it.update(event)) } ?: state).also { reader.processEvent(event) }}

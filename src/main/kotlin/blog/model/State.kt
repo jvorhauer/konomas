@@ -3,10 +3,10 @@ package blog.model
 import java.io.Serializable
 
 data class State(
-  private val users: Map<String, User> = mapOf(),
-  private val notes: Map<String, Note> = mapOf(),
-  private val tasks: Map<String, Task> = mapOf(),
-  private val tags : Map<String, Tag>  = mapOf(),
+  private val users: Map<String, User> = HashMap(9),
+  private val notes: Map<String, Note> = HashMap(9),
+  private val tasks: Map<String, Task> = HashMap(9),
+  private val tags : Map<String, Tag>  = HashMap(9),
   private val recovered: Boolean       = false
 ): Serializable {
   fun save(u: User)                 : State      = this.copy(users = this.users.minus(u.id).plus(u.id to u))

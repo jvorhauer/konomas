@@ -14,9 +14,9 @@ import io.ktor.client.statement.*
 import io.ktor.http.*
 import io.ktor.serialization.jackson.*
 import kotlinx.coroutines.runBlocking
-import blog.model.Counts
 import blog.model.TaskResponse
 import blog.model.UserResponse
+import blog.read.Counts
 
 class ApiTests {
 
@@ -65,7 +65,7 @@ class ApiTests {
   }
 
   @Test
-  fun `try to register user with bad json`() {
+  fun `fail to register user with bad json`() {
     runBlocking {
       var response = client.post("http://localhost:8181/api/users") {
         contentType(ContentType.Application.Json)
@@ -112,7 +112,7 @@ class ApiTests {
   }
 
   @Test
-  fun `try to login`() {
+  fun `succeed to login`() {
     runBlocking {
       val email = "login@here.now"
       var response: HttpResponse = client.post("http://localhost:8181/api/users") {
@@ -134,6 +134,35 @@ class ApiTests {
         header("Authorization", "Bearer ${token.token}")
       }
       assertThat(response.status.value).isEqualTo(200)
+    }
+  }
+
+  @Test
+  fun `succeed in updating a user`() {
+    runBlocking {
+      var response: HttpResponse = client.post("http://localhost:8181/api/users") {
+        contentType(ContentType.Application.Json)
+        setBody("""{"email":"updater@update.com","name":"Tester","password":"welkom123"}""")
+      }
+      assertThat(response.status.value).isEqualTo(201)
+      assertThat(response.headers["Location"]).startsWith("/api/users")
+
+      response = client.post("http://localhost:8181/api/login") {
+        contentType(ContentType.Application.Json)
+        setBody("""{"username":"updater@update.com","password":"welkom123"}""")
+      }
+      assertThat(response.status.value).isEqualTo(200)
+      val token = response.body<Token>()
+      assertThat(token).isNotNull
+
+      response = client.put("http://localhost:8181/api/users") {
+        header("Authorization", "Bearer ${token.token}")
+        contentType(ContentType.Application.Json)
+        setBody("""{"name":"Anders"}""")
+      }
+      assertThat(response.status.value).isEqualTo(200)
+      val ur = response.body<UserResponse>()
+      assertThat(ur.name).isEqualTo("Anders")
     }
   }
 

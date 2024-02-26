@@ -7,7 +7,7 @@ data class Tag(override val id: String, val label: String): Entity {
   fun toResponse() = TagResponse(id, label)
 }
 
-data class CreateTagReq(val label: String) {
+data class CreateTagRequest(val label: String) {
   fun toCommand(replyTo: ActorRef<StatusReply<TagResponse>>) = CreateTag(nextId(), label, replyTo)
 }
 

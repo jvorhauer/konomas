@@ -1,8 +1,6 @@
 package blog.model
 
-import java.time.Duration
 import java.time.Instant
-import java.time.ZoneId
 import java.time.ZonedDateTime
 import akka.actor.typed.ActorRef
 import akka.actor.typed.Scheduler
@@ -21,6 +19,7 @@ import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import kotlinx.coroutines.future.await
+import blog.config.Konfig
 import blog.read.Reader
 
 data class RegisterUserRequest(
@@ -31,7 +30,15 @@ data class RegisterUserRequest(
   fun toCommand(replyTo: ActorRef<StatusReply<User>>): CreateUser = CreateUser(this, replyTo)
 }
 
-data class LoginRequest(val username: String, val password: String)
+data class UpdateUserRequest(
+  val name: String?,
+  val password: String?
+): Request {
+  fun toCommand(id: String, replyTo: ActorRef<StatusReply<User>>) = UpdateUser(id, name, password, replyTo)
+}
+
+data class LoginRequest(val username: String, val password: String): Request
+
 // Commands
 
 data class CreateUser(
@@ -43,7 +50,16 @@ data class CreateUser(
 ) : Command {
   constructor(rur: RegisterUserRequest, replyTo: ActorRef<StatusReply<User>>) : this(rur.email, rur.name, rur.password, replyTo)
 
-  fun toEvent() = UserCreated(id, email, name.encode(), password.hashed())
+  fun toEvent() = UserCreated(id, email, name.encode, password.hashed)
+}
+
+data class UpdateUser(
+  val id: String,
+  val name: String?,
+  val password: String?,
+  val replyTo: ActorRef<StatusReply<User>>,
+): Command {
+  fun toEvent() = UserUpdated(id, name, password?.hashed)
 }
 
 // Events
@@ -57,8 +73,13 @@ data class UserCreated(
   fun toEntity(): User = User(id, email, name, password)
 }
 
+data class UserUpdated(
+  val id: String,
+  val name: String?,
+  val password: String?
+): Event
+
 data class UserDeleted(val id: String) : Event
-data class UserDeletedByEmail(val email: String) : Event
 
 // Entitites
 
@@ -67,8 +88,9 @@ data class User(
   val email: String,
   val name: String,
   val password: String,
-  val gravatar: String = gravatarize(email),
-  val joined: ZonedDateTime = TSID.from(id).instant.atZone(ZoneId.of("CET"))
+  val gravatar: String = email.gravatar,
+  val joined: ZonedDateTime = TSID.from(id).instant.atZone(CET),
+  val updated: ZonedDateTime = znow()
 ) : Entity {
   fun toResponse(reader: Reader): UserResponse = UserResponse(
     id,
@@ -79,6 +101,11 @@ data class User(
     reader.findNotesForUser(id).map(Note::toResponse),
     reader.findTasksForUser(id).map(Task::toResponse)
   )
+  fun update(uu: UserUpdated): User = this.copy(
+    name = uu.name ?: this.name, password = uu.password ?: this.password, updated = znow()
+  )
+  override fun hashCode(): Int = id.hashCode()
+  override fun equals(other: Any?): Boolean = equals(this, other)
 }
 
 // Responses
@@ -120,17 +147,28 @@ fun Route.usersRoute(processor: ActorRef<Command>, reader: Reader, scheduler: Sc
     }
     authenticate(kfg.jwt.realm) {
       get("/tasks") {
-        val userId = user(call) ?: return@get call.respondText("Unauthorized", status = Unauthorized)
+        val userId = userIdFromJWT(call) ?: return@get call.respondText("Unauthorized", status = Unauthorized)
         call.respond(reader.findTasksForUser(userId).map { it.toResponse() })
       }
       get("/me") {
-        val id = user(call) ?: return@get call.respondText("Unauthorized", status = Unauthorized)
+        val id = userIdFromJWT(call) ?: return@get call.respondText("Unauthorized", status = Unauthorized)
         val user = reader.findUser(id) ?: return@get call.respondText("user not found for $id", status = NotFound)
         call.respond(user.toResponse(reader))
       }
       get("/notes") {
-        val userId = user(call) ?: return@get call.respond(Unauthorized, "Unauthorized")
+        val userId = userIdFromJWT(call) ?: return@get call.respond(Unauthorized, "Unauthorized")
         call.respond(reader.findNotesForUser(userId).sortedBy { it.created }.map { it.toResponse() })
+      }
+      put {
+        val userId = userIdFromJWT(call) ?: return@put call.respond(Unauthorized, "Unauthorized")
+        val uur = call.receive<UpdateUserRequest>()
+        ask(processor, { rt -> uur.toCommand(userId, rt) }, timeout, scheduler).await().let {
+          if (it.isSuccess) {
+            call.respond(it.value.toResponse(reader))
+          } else {
+            call.respondText(it.error.message ?: "unknown error", status = BadRequest)
+          }
+        }
       }
     }
     get("{id?}") {
@@ -140,7 +178,7 @@ fun Route.usersRoute(processor: ActorRef<Command>, reader: Reader, scheduler: Sc
     }
     post {
       val cnu = call.receive<RegisterUserRequest>()
-      ask(processor, { rt -> cnu.toCommand(rt) }, Duration.ofMinutes(1), scheduler).await().let {
+      ask(processor, { rt -> cnu.toCommand(rt) }, timeout, scheduler).await().let {
         if (it.isSuccess) {
           call.response.header("Location", "/api/users/${it.value.id}")
           call.respond(HttpStatusCode.Created, hashMapOf("token" to createJwtToken(it.value.id, kfg)))

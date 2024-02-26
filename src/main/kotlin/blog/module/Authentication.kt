@@ -7,7 +7,7 @@ import io.ktor.server.application.*
 import io.ktor.server.auth.*
 import io.ktor.server.auth.jwt.*
 import io.ktor.server.response.*
-import blog.model.Konfig
+import blog.config.Konfig
 
 fun Application.authentication(kfg: Konfig) {
   install(Authentication) {

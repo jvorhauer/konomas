@@ -1,7 +1,6 @@
 package blog.model
 
 import java.time.LocalDateTime
-import java.time.ZoneId
 import java.time.ZonedDateTime
 import akka.Done
 import akka.actor.typed.ActorRef
@@ -16,6 +15,7 @@ import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import kotlinx.coroutines.future.await
+import blog.config.Konfig
 import blog.read.Reader
 
 enum class TaskStatus {
@@ -31,28 +31,28 @@ data class Task(
   val due: LocalDateTime,
   val status: TaskStatus = TaskStatus.TODO,
   val private: Boolean = true,
-  val created: ZonedDateTime = TSID.from(id).instant.atZone(ZoneId.of("CET"))
+  val created: ZonedDateTime = TSID.from(id).instant.atZone(CET),
+  val updated: ZonedDateTime = znow()
 ) : Entity {
   fun update(tu: TaskUpdated): Task = this.copy(
     title = tu.title ?: this.title,
-    slug = slugify(tu.title ?: this.title),
+    slug = tu.title?.slug ?: this.slug,
     body = tu.body ?: this.body,
     due = tu.due ?: this.due,
-    status = tu.status ?: this.status
+    status = tu.status ?: this.status,
+    updated = znow()
   )
-  fun toResponse() = TaskResponse(id,DTF.format(created), user, title, body, DTF.format(due), status.name)
-
-  companion object {
-    val clazz = Task::class
-  }
+  fun toResponse() = TaskResponse(id, created.fmt, updated.fmt, user, title, body, due.fmt, status.name)
+  override fun equals(other: Any?): Boolean = equals(this, other)
+  override fun hashCode(): Int = id.hashCode()
 }
 
 data class CreateTaskRequest(val title: String, val body: String, val due: LocalDateTime): Request {
-  fun toCommand(user: String, replyTo: ActorRef<StatusReply<TaskResponse>>) = CreateTask(user, title.encode(), body.encode(), due, replyTo)
+  fun toCommand(user: String, replyTo: ActorRef<StatusReply<TaskResponse>>) = CreateTask(user, title.encode, body.encode, due, replyTo)
 }
 
 data class UpdateTaskRequest(val id: String, val title: String?, val body: String?, val due: LocalDateTime?, val status: TaskStatus?): Request {
-  fun toCommand(user: String, replyTo: ActorRef<StatusReply<TaskResponse>>) = UpdateTask(user, id, title.mencode(), body.mencode(), due, status, replyTo)
+  fun toCommand(user: String, replyTo: ActorRef<StatusReply<TaskResponse>>) = UpdateTask(user, id, title.mencode, body.mencode, due, status, replyTo)
 }
 
 
@@ -91,7 +91,7 @@ data class TaskCreated(
   val body: String,
   val due: LocalDateTime
 ) : Event {
-  fun toEntity() = Task(id, user, title, slugify(title), body, due)
+  fun toEntity() = Task(id, user, title, title.slug, body, due)
   fun toResponse() = toEntity().toResponse()
 }
 
@@ -110,6 +110,7 @@ data class TaskDeleted(val id: String): Event
 data class TaskResponse(
   val id: String,
   val created: String,
+  val updated: String,
   val user: String,
   val title: String,
   val body: String,
@@ -122,7 +123,7 @@ fun Route.tasksRoute(processor: ActorRef<Command>, reader: Reader, scheduler: Sc
     route("/api/tasks") {
       post {
         val ctr = call.receive<CreateTaskRequest>()
-        val userId = user(call) ?: return@post call.respond(HttpStatusCode.Unauthorized, "Unauthorized")
+        val userId = userIdFromJWT(call) ?: return@post call.respond(HttpStatusCode.Unauthorized, "Unauthorized")
         ask(processor, { rt -> ctr.toCommand(userId, rt) }, timeout, scheduler).await().let {
           when {
               it.isSuccess -> {
@@ -146,7 +147,7 @@ fun Route.tasksRoute(processor: ActorRef<Command>, reader: Reader, scheduler: Sc
       }
       put {
         val utr = call.receive<UpdateTaskRequest>()
-        val userId = user(call) ?: return@put call.respond(HttpStatusCode.Unauthorized, "Unauthorized")
+        val userId = userIdFromJWT(call) ?: return@put call.respond(HttpStatusCode.Unauthorized, "Unauthorized")
         ask(processor, { rt -> utr.toCommand(userId, rt) }, timeout, scheduler).await().let {
           when {
             it.isSuccess -> call.respond(HttpStatusCode.OK, it.value)

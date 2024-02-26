@@ -6,7 +6,10 @@ import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
 import java.security.SecureRandom
 import java.time.Duration
+import java.time.Instant
 import java.time.LocalDateTime
+import java.time.ZoneId
+import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import io.hypersistence.tsid.TSID
@@ -29,47 +32,34 @@ object Hasher {
   private fun toHex(ba: ByteArray) = ba.joinToString(separator = "") { String.format(Locale.US, "%02x", it) }
   fun hash(s: String): String = toHex(md.digest(s.toByteArray(StandardCharsets.UTF_8)))
 }
-fun gravatarize(s: String): String = s.trim().lowercase().hashed()
+val String.hashed: String get() = Hasher.hash(this)
+val String.gravatar: String get() = this.trim().lowercase().hashed
 
 val DTF: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
-fun now(): LocalDateTime = LocalDateTime.now()
+val ZonedDateTime.fmt: String get() = DTF.format(this)
+val LocalDateTime.fmt: String get() = DTF.format(this)
+
+val CET: ZoneId = ZoneId.of("CET")
+fun inow(): Instant = Instant.now()
+fun znow(): ZonedDateTime = inow().atZone(CET)
+fun now(): LocalDateTime = LocalDateTime.ofInstant(inow(), CET)
 
 private val idFactory = TSID.Factory.builder()
   .withRandom(SecureRandom.getInstance("SHA1PRNG", "SUN"))
   .withNodeBits(8)
   .withNode(InetAddress.getLocalHost().address[3].toInt()and(0xFF)).build()
-fun nextId(): String = idFactory.generate().toString()
+fun nextTSID(): TSID = idFactory.generate()
+fun nextId(): String = nextTSID().toString()
 
 fun slugify(s: String): String = s.trim().replace("  ", " ").lowercase().replace("[^ a-z0-9]".toRegex(), "").replace(' ', '-')
+val String.slug: String get() = slugify(this)
 
-fun String.hashed() = Hasher.hash(this)
 fun doEncode(str: String): String = str.replace('<', '[').replace('>', ']')
 fun doMEncode(str: String?): String? = if (str != null) doEncode(str) else null
-fun String.encode(): String = doEncode(this)
-fun String?.mencode(): String? = doMEncode(this)
+val String.encode: String get() = doEncode(this)
+val String?.mencode: String? get() = doMEncode(this)
 
-data class Counts(
-  val users: Int,
-  val notes: Int,
-  val tasks: Int
-)
-
-data class Jwt(
-  val secret: String,
-  val audience: String,
-  val realm: String,
-  val issuer: String,
-  val expiresIn: Long = 1000L * 60L * 60L * 24L
-)
-data class Server(
-  val port: Int,
-  val host: String
-)
-
-data class Konfig(
-  val jwt: Jwt,
-  val server: Server
-)
+fun equals(e: Entity, a: Any?): Boolean = e === a || (e.javaClass == a?.javaClass && e.id == (a as Entity).id)
 
 val timeout: Duration = Duration.ofSeconds(10)
-fun user(call: ApplicationCall): String? = call.principal<JWTPrincipal>()?.payload?.getClaim("uid")?.asString()
+fun userIdFromJWT(call: ApplicationCall): String? = call.principal<JWTPrincipal>()?.payload?.getClaim("uid")?.asString()

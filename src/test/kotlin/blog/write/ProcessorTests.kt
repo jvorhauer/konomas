@@ -10,7 +10,10 @@ import blog.model.CreateNote
 import blog.model.CreateUser
 import blog.model.NoteResponse
 import blog.model.UpdateNote
+import blog.model.UpdateUser
 import blog.model.User
+import blog.model.UserTests
+import blog.model.hashed
 import blog.read.Reader
 
 class ProcessorTests {
@@ -62,6 +65,26 @@ class ProcessorTests {
 
     assertThat(reader.allUsers()).hasSize(1)
     assertThat(reader.findUserByEmail("a@b.c")).isNotNull
+  }
+
+  @Test
+  fun `should update an existing user`() {
+    val reader = Reader()
+    val prc = testKit.spawn(Processor.create(aid(), reader))
+    val probe = testKit.createTestProbe<StatusReply<User>>()
+
+    prc.tell(CreateUser(UserTests.email, UserTests.name, UserTests.password, probe.ref))
+    var result = probe.receiveMessage()
+    assertThat(result.isSuccess).isTrue
+    assertThat(result.value.id).isNotNull
+    assertThat(reader.allUsers()).hasSize(1)
+
+    prc.tell(UpdateUser(result.value.id, "Anders", null, probe.ref))
+    result = probe.receiveMessage()
+    assertThat(reader.allUsers()).hasSize(1)
+    assertThat(reader.findUser(result.value.id)).isNotNull
+    assertThat(reader.findUser(result.value.id)?.name).isEqualTo(result.value.name).isEqualTo("Anders")
+    assertThat(reader.findUser(result.value.id)?.password).isEqualTo(result.value.password).isEqualTo(UserTests.password.hashed)
   }
 
   @Test

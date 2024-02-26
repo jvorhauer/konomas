@@ -1,6 +1,5 @@
 package blog.model
 
-import java.time.ZoneId
 import java.time.ZonedDateTime
 import akka.Done
 import akka.actor.typed.ActorRef
@@ -15,14 +14,15 @@ import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import kotlinx.coroutines.future.await
+import blog.config.Konfig
 import blog.read.Reader
 
 data class CreateNoteRequest(val title: String, val body: String) {
-  fun toCommand(user: String, replyTo: ActorRef<StatusReply<NoteResponse>>) = CreateNote(user, title.encode(), body.encode(), replyTo)
+  fun toCommand(user: String, replyTo: ActorRef<StatusReply<NoteResponse>>) = CreateNote(user, title.encode, body.encode, replyTo)
 }
 
 data class UpdateNoteRequest(val id: String, val title: String?, val body: String?) {
-  fun toCommand(user: String, rt: ActorRef<StatusReply<NoteResponse>>) = UpdateNote(user, id, title.mencode(), body.mencode(), rt)
+  fun toCommand(user: String, rt: ActorRef<StatusReply<NoteResponse>>) = UpdateNote(user, id, title.mencode, body.mencode, rt)
 }
 
 data class CreateNote(
@@ -44,7 +44,7 @@ data class DeleteNote(val id: String, val rt: ActorRef<StatusReply<Done>>): Comm
 }
 
 data class NoteCreated(val id: String, val user: String, val title: String, val body: String) : Event {
-  fun toEntity() = Note(id, user, title, slugify(title), body)
+  fun toEntity() = Note(id, user, title, title.slug, body)
   fun toResponse() = this.toEntity().toResponse()
 }
 
@@ -58,17 +58,24 @@ data class Note(
   val title: String,
   val slug: String,
   val body: String,
-  val created: ZonedDateTime = TSID.from(id).instant.atZone(ZoneId.of("CET")),
+  val created: ZonedDateTime = TSID.from(id).instant.atZone(CET),
+  val updated: ZonedDateTime = znow()
 ): Entity {
-  constructor(id: String, user: String, title: String, body: String): this(id, user, title, slugify(title), body)
-  fun update(nu: NoteUpdated): Note = this.copy(title = nu.title ?: this.title, slug = slugify(nu.title ?: this.title), body = nu.body ?: this.body)
-  fun toResponse() = NoteResponse(id, user, DTF.format(created), title, slug, body)
+  constructor(id: String, user: String, title: String, body: String): this(id, user, title, title.slug, body)
+  fun update(nu: NoteUpdated): Note = this.copy(
+    title = nu.title ?: this.title, slug = nu.title?.slug ?: this.slug, body = nu.body ?: this.body, updated = znow()
+  )
+  fun toResponse() = NoteResponse(id, user, DTF.format(created), DTF.format(updated), title, slug, body)
+
+  override fun equals(other: Any?): Boolean = equals(this, other)
+  override fun hashCode(): Int = id.hashCode()
 }
 
 data class NoteResponse(
   val id: String,
   val user: String,
   val created: String,
+  val updated: String,
   val title: String,
   val slug: String,
   val body: String
@@ -79,7 +86,7 @@ fun Route.notesRoute(processor: ActorRef<Command>, reader: Reader, scheduler: Sc
     route("/api/notes") {
       post {
         val cnr = call.receive<CreateNoteRequest>()
-        val userId = user(call) ?: return@post call.respond(HttpStatusCode.Unauthorized, "Unauthorized")
+        val userId = userIdFromJWT(call) ?: return@post call.respond(HttpStatusCode.Unauthorized, "Unauthorized")
         AskPattern.ask(processor, { rt -> cnr.toCommand(userId, rt) }, timeout, scheduler).await().let {
           if (it.isSuccess) {
             call.response.header("Location", "/api/notes/${it.value.id}")
@@ -101,7 +108,7 @@ fun Route.notesRoute(processor: ActorRef<Command>, reader: Reader, scheduler: Sc
       }
       put {
         val unr = call.receive<UpdateNoteRequest>()
-        val userId = user(call) ?: return@put call.respond(HttpStatusCode.Unauthorized, "Unauthorized")
+        val userId = userIdFromJWT(call) ?: return@put call.respond(HttpStatusCode.Unauthorized, "Unauthorized")
         AskPattern.ask(processor, { rt -> unr.toCommand(userId, rt) }, timeout, scheduler).await().let {
           when {
             it.isSuccess -> call.respond(HttpStatusCode.OK, it.value)

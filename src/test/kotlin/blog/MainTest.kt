@@ -3,7 +3,7 @@ package blog
 import akka.actor.testkit.typed.javadsl.TestKitJunitResource
 import akka.actor.typed.Behavior
 import akka.actor.typed.javadsl.Behaviors
-import blog.model.Konfig
+import blog.config.Konfig
 import blog.module.authentication
 import blog.module.content
 import blog.read.info
@@ -105,12 +105,12 @@ class MainTests {
   @Test
   fun testEncoding() {
     var str = "Test with <h1>html tags</h1>"
-    assertThat(str.encode()).doesNotContain("<").doesNotContain(">")
+    assertThat(str.encode).doesNotContain("<").doesNotContain(">")
 
     str = "Test with \" and & and '"
-    assertThat(str.encode()).isEqualTo(str)
+    assertThat(str.encode).isEqualTo(str)
 
     str = "and now with [h1]square brackets[/h1]"
-    assertThat(str.encode()).isEqualTo(str)
+    assertThat(str.encode).isEqualTo(str)
   }
 }

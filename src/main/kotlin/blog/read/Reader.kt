@@ -2,7 +2,6 @@ package blog.read
 
 import java.util.concurrent.ConcurrentHashMap
 import org.slf4j.LoggerFactory
-import blog.model.Counts
 import blog.model.Event
 import blog.model.Note
 import blog.model.NoteCreated
@@ -15,12 +14,12 @@ import blog.model.TaskUpdated
 import blog.model.User
 import blog.model.UserCreated
 import blog.model.UserDeleted
-import blog.model.UserDeletedByEmail
+import blog.model.UserUpdated
 
 class Reader(
-  private val users: MutableMap<String, User> = ConcurrentHashMap(),
-  private val tasks: MutableMap<String, Task> = ConcurrentHashMap(),
-  private val notes: MutableMap<String, Note> = ConcurrentHashMap(),
+  private val users: MutableMap<String, User> = ConcurrentHashMap(9),
+  private val tasks: MutableMap<String, Task> = ConcurrentHashMap(9),
+  private val notes: MutableMap<String, Note> = ConcurrentHashMap(9),
   private var serverReady: Boolean = false,
   private var recovered: Boolean = false,
 ) {
@@ -37,7 +36,7 @@ class Reader(
     return when (T::class) {
       User::class -> findUser(id) as T?
       Note::class -> findNote(id) as T?
-      Task.clazz -> findTask(id) as T?
+      Task::class -> findTask(id) as T?
       else -> throw IllegalArgumentException("Reader.find: Unsupported type: ${T::class}")
     }
   }
@@ -60,8 +59,8 @@ class Reader(
   fun processEvent(e: Event) {
     when (e) {
       is UserCreated -> users[e.id] = e.toEntity()
+      is UserUpdated -> if (users[e.id] != null) users[e.id] = users[e.id]!!.update(e)
       is UserDeleted -> users.remove(e.id)
-      is UserDeletedByEmail -> users.filter { it.value.email == e.email }.map { it.key }.forEach { users.remove(it) }
       is NoteCreated -> notes[e.id] = e.toEntity()
       is NoteUpdated -> if (notes[e.id] != null) notes[e.id] = notes[e.id]!!.update(e)
       is NoteDeleted -> notes.remove(e.id)

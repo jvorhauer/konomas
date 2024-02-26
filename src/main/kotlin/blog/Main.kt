@@ -10,7 +10,7 @@ import io.ktor.server.engine.*
 import io.ktor.server.netty.*
 import io.ktor.server.routing.*
 import io.sentry.Sentry
-import blog.model.Konfig
+import blog.config.Konfig
 import blog.model.loginRoute
 import blog.model.notesRoute
 import blog.model.tasksRoute

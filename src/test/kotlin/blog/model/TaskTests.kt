@@ -63,7 +63,7 @@ class TaskTests {
     assertThat(ut.due).isEqualTo(utr.due).isAfter(LocalDateTime.now())
     assertThat(ut.status).isEqualTo(TaskStatus.DOING)
 
-    val task = Task(taskId, userId, "title", slugify("title"), "body", now().plusDays(1), TaskStatus.REVIEW)
+    val task = Task(taskId, userId, "title", "title".slug, "body", now().plusDays(1), TaskStatus.REVIEW)
     var updated = task.update(ut.toEvent())
     assertThat(updated.title).isEqualTo("new title")
     assertThat(updated.body).isEqualTo("new body")

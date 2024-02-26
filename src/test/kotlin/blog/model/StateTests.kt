@@ -6,7 +6,7 @@ import java.time.LocalDateTime
 
 class StateTests {
 
-  private val pw = "Welkom123!".hashed()
+  private val pw = "Welkom123!".hashed
 
   @Test
   fun `new user`() {
