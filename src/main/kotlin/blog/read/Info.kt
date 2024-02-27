@@ -9,14 +9,14 @@ import io.ktor.server.routing.*
 fun Route.info(reader: Reader) {
   route("/info") {
     get("/ready") {
-      if (reader.isReady()) {
+      if (reader.isReady) {
         call.respond(HttpStatusCode.OK, "Ready")
       } else {
         call.respond(HttpStatusCode.ServiceUnavailable, "Not Ready")
       }
     }
     get("/alive") {
-      if (reader.isReady()) {
+      if (reader.isReady) {
         call.respond(HttpStatusCode.OK, "Alive")
       } else {
         call.respond(HttpStatusCode.ServiceUnavailable, "Dead")

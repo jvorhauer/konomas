@@ -13,7 +13,7 @@ import blog.model.Task
 
 class ReaderTests {
 
-  private val userId = nextId()
+  private val userId = nextId
 
   @Test
   fun `new user`() {
@@ -22,7 +22,7 @@ class ReaderTests {
     assertThat(reader.allUsers()).hasSize(1)
     assertThat(reader.findUser(userId)).isNotNull
 
-    reader.processEvent(UserCreated(nextId(), "break@tester.nl", "Breaker", "Welkom124!"))
+    reader.processEvent(UserCreated(nextId, "break@tester.nl", "Breaker", "Welkom124!"))
     assertThat(reader.allUsers()).hasSize(2)
 
     val user: User? = reader.find(userId)
@@ -34,7 +34,7 @@ class ReaderTests {
   @Test
   fun `new note`() {
     val reader = Reader()
-    val noteId = nextId()
+    val noteId = nextId
     reader.processEvent(NoteCreated(noteId, userId, "title", "body"))
     assertThat(reader.allNotes()).hasSize(1)
     assertThat(reader.findNotesForUser(userId)).hasSize(1)
@@ -46,7 +46,7 @@ class ReaderTests {
   @Test
   fun `new task`() {
     val reader = Reader()
-    val taskId = nextId()
+    val taskId = nextId
     reader.processEvent(TaskCreated(taskId, userId, "title", "body", LocalDateTime.now().plusHours(4)))
     assertThat(reader.allTasks()).hasSize(1)
     assertThat(reader.findTasksForUser(userId)).hasSize(1)
@@ -59,11 +59,11 @@ class ReaderTests {
     reader.processEvent(UserCreated(userId, "test@tester.nl", "Tester", "Welkom123!"))
     assertThat(reader.allUsers()).hasSize(1)
 
-    reader.processEvent(NoteCreated(nextId(), userId, "title", "body"))
+    reader.processEvent(NoteCreated(nextId, userId, "title", "body"))
     assertThat(reader.allNotes()).hasSize(1)
     assertThat(reader.findNotesForUser(userId)).hasSize(1)
 
-    reader.processEvent(TaskCreated(nextId(), userId, "title", "body", LocalDateTime.now().plusHours(4)))
+    reader.processEvent(TaskCreated(nextId, userId, "title", "body", LocalDateTime.now().plusHours(4)))
     assertThat(reader.allTasks()).hasSize(1)
     assertThat(reader.findTasksForUser(userId)).hasSize(1)
   }

@@ -17,11 +17,11 @@ class TaskTests {
     """
   )
   private val probeTaskRes = testKit.createTestProbe<StatusReply<TaskResponse>>().ref
-  private val userId = nextId()
+  private val userId = nextId
 
   @Test
   fun `create task request, command, event, entity and response`() {
-    val ctr = CreateTaskRequest("title", "body", now().plusDays(2))
+    val ctr = CreateTaskRequest("title", "body", now.plusDays(2))
     val ct = ctr.toCommand(userId, probeTaskRes)
     assertThat(ct.id).isNotNull
     assertThat(ct.title).isEqualTo("title").isEqualTo(ctr.title)
@@ -29,21 +29,21 @@ class TaskTests {
     assertThat(ct.due).isAfter(LocalDateTime.now()).isEqualTo(ctr.due)
     assertThat(ct.user).isEqualTo(userId)
 
-    val tc = ct.toEvent()
+    val tc = ct.toEvent
     assertThat(tc.id).isEqualTo(ct.id)
     assertThat(tc.title).isEqualTo("title").isEqualTo(ct.title).isEqualTo(ctr.title)
     assertThat(tc.body).isEqualTo("body").isEqualTo(ct.body).isEqualTo(ctr.body)
     assertThat(tc.due).isEqualTo(ct.due).isEqualTo(ctr.due).isAfter(LocalDateTime.now())
     assertThat(tc.user).isEqualTo(userId).isEqualTo(ct.user)
 
-    val task = tc.toEntity()
+    val task = tc.toEntity
     assertThat(task.id).isEqualTo(tc.id)
     assertThat(task.title).isEqualTo("title").isEqualTo(tc.title).isEqualTo(ct.title).isEqualTo(ctr.title)
     assertThat(task.body).isEqualTo("body").isEqualTo(tc.body).isEqualTo(ct.body).isEqualTo(ctr.body)
     assertThat(task.due).isEqualTo(tc.due).isEqualTo(ct.due).isEqualTo(ctr.due).isAfter(LocalDateTime.now())
     assertThat(task.user).isEqualTo(userId).isEqualTo(tc.user).isEqualTo(ct.user)
 
-    val res = task.toResponse()
+    val res = task.toResponse
     assertThat(res.id).isEqualTo(TSID.from(task.id).toString())
     assertThat(res.title).isEqualTo(task.title)
     assertThat(res.body).isEqualTo(task.body)
@@ -53,8 +53,8 @@ class TaskTests {
 
   @Test
   fun `update task request, command and event`() {
-    val taskId = nextId()
-    val utr = UpdateTaskRequest(TSID.from(taskId).toString(), "new title", "new body", now().plusDays(3), TaskStatus.DOING)
+    val taskId = nextId
+    val utr = UpdateTaskRequest(TSID.from(taskId).toString(), "new title", "new body", now.plusDays(3), TaskStatus.DOING)
     val ut = utr.toCommand(userId, probeTaskRes)
     assertThat(ut.id).isEqualTo(taskId)
     assertThat(ut.user).isEqualTo(userId)
@@ -63,8 +63,8 @@ class TaskTests {
     assertThat(ut.due).isEqualTo(utr.due).isAfter(LocalDateTime.now())
     assertThat(ut.status).isEqualTo(TaskStatus.DOING)
 
-    val task = Task(taskId, userId, "title", "title".slug, "body", now().plusDays(1), TaskStatus.REVIEW)
-    var updated = task.update(ut.toEvent())
+    val task = Task(taskId, userId, "title", "title".slug, "body", now.plusDays(1), TaskStatus.REVIEW)
+    var updated = task.update(ut.toEvent)
     assertThat(updated.title).isEqualTo("new title")
     assertThat(updated.body).isEqualTo("new body")
 

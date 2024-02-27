@@ -38,7 +38,7 @@ fun Application.validation(reader: Reader) {
       when {
         it.title.isBlank()     -> ValidationResult.Invalid("title is blank")
         it.body.isBlank()      -> ValidationResult.Invalid("body is blank")
-        it.due.isBefore(now()) -> ValidationResult.Invalid("due can not be in the passed")
+        it.due.isBefore(now)   -> ValidationResult.Invalid("due can not be in the passed")
         else                   -> ValidationResult.Valid
       }
     }
@@ -47,7 +47,7 @@ fun Application.validation(reader: Reader) {
         reader.notExistsTask(it.id)              -> ValidationResult.Invalid("task not found for ${it.id}")
         it.title != null && it.title.isBlank()   -> ValidationResult.Invalid("title is blank")
         it.body != null && it.body.isBlank()     -> ValidationResult.Invalid("body is blank")
-        it.due != null && it.due.isBefore(now()) -> ValidationResult.Invalid("due can not be in the passed")
+        it.due != null && it.due.isBefore(now)   -> ValidationResult.Invalid("due can not be in the passed")
         else                                     -> ValidationResult.Valid
       }
     }

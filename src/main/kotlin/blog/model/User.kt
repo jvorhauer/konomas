@@ -46,11 +46,11 @@ data class CreateUser(
   val name: String,
   val password: String,
   val replyTo: ActorRef<StatusReply<User>>,
-  val id: String = nextId(),
+  val id: String = nextId,
 ) : Command {
   constructor(rur: RegisterUserRequest, replyTo: ActorRef<StatusReply<User>>) : this(rur.email, rur.name, rur.password, replyTo)
 
-  fun toEvent() = UserCreated(id, email, name.encode, password.hashed)
+  val toEvent get() = UserCreated(id, email, name.encode, password.hashed)
 }
 
 data class UpdateUser(
@@ -59,7 +59,7 @@ data class UpdateUser(
   val password: String?,
   val replyTo: ActorRef<StatusReply<User>>,
 ): Command {
-  fun toEvent() = UserUpdated(id, name, password?.hashed)
+  val toEvent get() = UserUpdated(id, name, password?.hashed)
 }
 
 // Events
@@ -70,7 +70,7 @@ data class UserCreated(
   val name: String,
   val password: String,
 ) : Event {
-  fun toEntity(): User = User(id, email, name, password)
+  val toEntity: User get() = User(id, email, name, password)
 }
 
 data class UserUpdated(
@@ -90,7 +90,7 @@ data class User(
   val password: String,
   val gravatar: String = email.gravatar,
   val joined: ZonedDateTime = TSID.from(id).instant.atZone(CET),
-  val updated: ZonedDateTime = znow()
+  val updated: ZonedDateTime = znow
 ) : Entity {
   fun toResponse(reader: Reader): UserResponse = UserResponse(
     id,
@@ -102,7 +102,7 @@ data class User(
     reader.findTasksForUser(id).map(Task::toResponse)
   )
   fun update(uu: UserUpdated): User = this.copy(
-    name = uu.name ?: this.name, password = uu.password ?: this.password, updated = znow()
+    name = uu.name ?: this.name, password = uu.password ?: this.password, updated = znow
   )
   override fun hashCode(): Int = id.hashCode()
   override fun equals(other: Any?): Boolean = equals(this, other)
@@ -148,7 +148,7 @@ fun Route.usersRoute(processor: ActorRef<Command>, reader: Reader, scheduler: Sc
     authenticate(kfg.jwt.realm) {
       get("/tasks") {
         val userId = userIdFromJWT(call) ?: return@get call.respondText("Unauthorized", status = Unauthorized)
-        call.respond(reader.findTasksForUser(userId).map { it.toResponse() })
+        call.respond(reader.findTasksForUser(userId).map { it.toResponse })
       }
       get("/me") {
         val id = userIdFromJWT(call) ?: return@get call.respondText("Unauthorized", status = Unauthorized)

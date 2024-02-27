@@ -35,7 +35,7 @@ class ModelTests {
 
   @Test
   fun equals() {
-    val n = Note(nextId(), nextId(), "Title", "Body")
+    val n = Note(nextId, nextId, "Title", "Body")
     assertThat(equals(n, n)).isTrue
     assertThat(equals(n, null)).isFalse
     assertThat(equals(n, "not a note")).isFalse
@@ -46,19 +46,12 @@ class ModelTests {
     assertThat(n.equals("not a note")).isFalse
     assertThat(n.equals(true)).isFalse
 
-    val o = Note(n.id, nextId(), "Title O", "Body O")
+    val o = Note(n.id, nextId, "Title O", "Body O")
     assertThat(equals(o, o)).isTrue
     assertThat(equals(n, o)).isTrue
     assertThat(equals(o, n)).isTrue
 
     assertThat(o == n).isTrue
     assertThat(n == o).isTrue
-  }
-
-  @Test
-  fun nextIds() {
-    val tsid = nextTSID()
-    tsid.hashCode()
-
   }
 }

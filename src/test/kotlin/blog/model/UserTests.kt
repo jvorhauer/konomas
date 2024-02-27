@@ -35,7 +35,7 @@ class UserTests {
   @Test
   fun `command to event`() {
     val c = CreateUser(email, name, password, probe)
-    val e = c.toEvent()
+    val e = c.toEvent
     assertThat(e.email).isEqualTo(c.email)
     assertThat(e.name).isEqualTo(c.name)
     assertThat(e.id).isNotNull
@@ -44,8 +44,8 @@ class UserTests {
 
   @Test
   fun `event to entity`() {
-    val uc = UserCreated(nextId(), email, name, password)
-    val u = uc.toEntity()
+    val uc = UserCreated(nextId, email, name, password)
+    val u = uc.toEntity
     assertThat(u.id).isEqualTo(uc.id)
     assertThat(u.email).isEqualTo(uc.email)
     assertThat(u.name).isEqualTo(uc.name)
@@ -55,23 +55,23 @@ class UserTests {
 
   @Test
   fun `update entity`() {
-    val u = User(nextId(), email, name, password.hashed)
+    val u = User(nextId, email, name, password.hashed)
     var uu = UpdateUser(u.id, "Anders", null, probe)
-    var v = u.update(uu.toEvent())
+    var v = u.update(uu.toEvent)
     assertThat(v.id).isEqualTo(u.id)
     assertThat(v.email).isEqualTo(u.email).isEqualTo(email)
     assertThat(v.name).isEqualTo("Anders")
     assertThat(v.password).isEqualTo(u.password).isEqualTo(password.hashed)
 
     uu = UpdateUser(u.id, null, "anders!?", probe)
-    v = u.update(uu.toEvent())
+    v = u.update(uu.toEvent)
     assertThat(v.id).isEqualTo(u.id)
     assertThat(v.email).isEqualTo(u.email).isEqualTo(email)
     assertThat(v.name).isEqualTo(u.name).isEqualTo(name)
     assertThat(v.password).isNotEqualTo(u.password).isEqualTo("anders!?".hashed)
 
     uu = UpdateUser(u.id, null, null, probe)
-    v = u.update(uu.toEvent())
+    v = u.update(uu.toEvent)
     assertThat(v.id).isEqualTo(u.id)
     assertThat(v.email).isEqualTo(u.email).isEqualTo(email)
     assertThat(v.name).isEqualTo(u.name).isEqualTo(name)

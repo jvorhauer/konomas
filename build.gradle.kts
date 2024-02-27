@@ -78,7 +78,6 @@ dependencies {
   implementation("io.sentry:sentry-logback:7.2.0")
 
   testImplementation("com.typesafe.akka:akka-persistence-testkit_2.13:2.9.1")
-  testImplementation("org.jetbrains.kotlin:kotlin-test-junit:1.9.22")
   testImplementation("org.assertj:assertj-core:3.25.2")
   testImplementation(platform("org.junit:junit-bom:5.10.2"))
   testImplementation("org.junit.jupiter:junit-jupiter")
@@ -101,7 +100,7 @@ tasks.withType<JavaCompile> {
 }
 
 jacoco {
-  toolVersion = "0.8.9"
+  toolVersion = "0.8.11"
 }
 
 tasks.jacocoTestReport {

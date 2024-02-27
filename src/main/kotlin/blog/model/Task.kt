@@ -32,7 +32,7 @@ data class Task(
   val status: TaskStatus = TaskStatus.TODO,
   val private: Boolean = true,
   val created: ZonedDateTime = TSID.from(id).instant.atZone(CET),
-  val updated: ZonedDateTime = znow()
+  val updated: ZonedDateTime = znow
 ) : Entity {
   fun update(tu: TaskUpdated): Task = this.copy(
     title = tu.title ?: this.title,
@@ -40,9 +40,10 @@ data class Task(
     body = tu.body ?: this.body,
     due = tu.due ?: this.due,
     status = tu.status ?: this.status,
-    updated = znow()
+    updated = znow
   )
-  fun toResponse() = TaskResponse(id, created.fmt, updated.fmt, user, title, body, due.fmt, status.name)
+
+  val toResponse get() = TaskResponse(id, created.fmt, updated.fmt, user, title, body, due.fmt, status.name)
   override fun equals(other: Any?): Boolean = equals(this, other)
   override fun hashCode(): Int = id.hashCode()
 }
@@ -62,9 +63,9 @@ data class CreateTask(
   val body: String,
   val due: LocalDateTime,
   val replyTo: ActorRef<StatusReply<TaskResponse>>,
-  val id: String = nextId()
+  val id: String = nextId
 ) : Command {
-  fun toEvent() = TaskCreated(id, user, title, body, due)
+  val toEvent get() = TaskCreated(id, user, title, body, due)
 }
 
 data class UpdateTask(
@@ -76,11 +77,11 @@ data class UpdateTask(
   val status: TaskStatus?,
   val replyTo: ActorRef<StatusReply<TaskResponse>>
 ) : Command {
-  fun toEvent() = TaskUpdated(user, id, title, body, due, status)
+  val toEvent get() = TaskUpdated(user, id, title, body, due, status)
 }
 
 data class DeleteTask(val id: String, val replyTo: ActorRef<StatusReply<Done>>): Command {
-  fun toEvent() = TaskDeleted(id)
+  val toEvent get() = TaskDeleted(id)
 }
 
 
@@ -91,8 +92,8 @@ data class TaskCreated(
   val body: String,
   val due: LocalDateTime
 ) : Event {
-  fun toEntity() = Task(id, user, title, title.slug, body, due)
-  fun toResponse() = toEntity().toResponse()
+  val toEntity get() = Task(id, user, title, title.slug, body, due)
+  val toResponse get() = toEntity.toResponse
 }
 
 data class TaskUpdated(
@@ -137,12 +138,12 @@ fun Route.tasksRoute(processor: ActorRef<Command>, reader: Reader, scheduler: Sc
       get {
         val rows = call.request.queryParameters["rows"]?.toInt() ?: 10
         val start = call.request.queryParameters["start"]?.toInt() ?: 0
-        call.respond(reader.allTasks(rows, start).map { it.toResponse() })
+        call.respond(reader.allTasks(rows, start).map { it.toResponse })
       }
       get("{id?}") {
         val id = call.parameters["id"] ?: return@get call.respond(HttpStatusCode.NotFound, "no task id specified")
         (reader.find<Task>(id) ?: return@get call.respond(HttpStatusCode.NotFound, "task not found for $id")).let {
-          call.respond(it.toResponse())
+          call.respond(it.toResponse)
         }
       }
       put {

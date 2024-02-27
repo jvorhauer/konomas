@@ -11,7 +11,7 @@ class StateTests {
   @Test
   fun `new user`() {
     val state = State()
-    val user = User(nextId(), "test@tester.nl", "Tester", pw)
+    val user = User(nextId, "test@tester.nl", "Tester", pw)
     val state2 = state.save(user)
     assertThat(state2.userCount()).isEqualTo(1)
 
@@ -19,7 +19,7 @@ class StateTests {
     assertThat(found).isNotNull
     assertThat(found?.name).isEqualTo("Tester")
 
-    val notFound = state2.findUser(nextId())
+    val notFound = state2.findUser(nextId)
     assertThat(notFound).isNull()
 
     assertThat(state2.allUsers()).hasSize(1)
@@ -28,7 +28,7 @@ class StateTests {
   @Test
   fun `update user`() {
     val state = State()
-    val user = User(nextId(), "test@tester.nl", "Tester", pw)
+    val user = User(nextId, "test@tester.nl", "Tester", pw)
     val state2 = state.save(user)
     assertThat(state2.userCount()).isEqualTo(1)
   }
@@ -36,8 +36,8 @@ class StateTests {
   @Test
   fun `new note`() {
     val state = State()
-    val user = User(nextId(), "test@tester.nl", "Tester", pw)
-    val note = Note(nextId(), user.id, "Test", "Testing, 1.. 2..")
+    val user = User(nextId, "test@tester.nl", "Tester", pw)
+    val note = Note(nextId, user.id, "Test", "Testing, 1.. 2..")
     val state2 = state.save(user)
     val state3 = state2.save(note)
     assertThat(state3.userCount()).isEqualTo(1)
@@ -50,8 +50,8 @@ class StateTests {
   @Test
   fun `update note`() {
     val state = State()
-    val user = User(nextId(), "test@tester.nl", "Tester", pw)
-    val note = Note(nextId(), user.id, "Test", "Testing, 1.. 2..")
+    val user = User(nextId, "test@tester.nl", "Tester", pw)
+    val note = Note(nextId, user.id, "Test", "Testing, 1.. 2..")
     val state2 = state.save(user)
     val state3 = state2.save(note)
     assertThat(state3.userCount()).isEqualTo(1)
@@ -73,9 +73,9 @@ class StateTests {
   @Test
   fun `new task`() {
     val state = State()
-    val user = User(nextId(), "test@tester.nl", "Tester", pw)
+    val user = User(nextId, "test@tester.nl", "Tester", pw)
     val state2 = state.save(user)
-    val task = Task(nextId(), user.id, "Test", "test", "Tasking, 1.. 2..", LocalDateTime.now().plusHours(1))
+    val task = Task(nextId, user.id, "Test", "test", "Tasking, 1.. 2..", LocalDateTime.now().plusHours(1))
     val state3 = state2.save(task)
     assertThat(state3.taskCount()).isEqualTo(1)
     assertThat(state3.findTask(task.id)).isNotNull

@@ -4,8 +4,8 @@ import java.io.Serializable
 
 data class State(
   private val users: Map<String, User> = HashMap(9),
-  private val notes: Map<String, Note> = HashMap(9),
-  private val tasks: Map<String, Task> = HashMap(9),
+  private val notes: Map<String, Note> = HashMap(99),
+  private val tasks: Map<String, Task> = HashMap(99),
   private val tags : Map<String, Tag>  = HashMap(9),
   private val recovered: Boolean       = false
 ): Serializable {
@@ -27,6 +27,17 @@ data class State(
   fun findTasksForUser(id: String): List<Task>     = tasks.values.filter { it.user == id }
   fun taskCount()                 : Int            = tasks.size
   fun deleteTask(id: String)      : State          = this.copy(tasks = this.tasks.minus(id))
+
+  fun save(t: Tag)                : State          = this.copy(tags = this.tags.minus(t.id).plus(t.id to t))
+  fun findTag(id: String)         : Tag?           = tags[id]
+
+  inline fun <reified T> find(id: String): T? = when (T::class) {
+        User::class -> findUser(id) as T?
+        Note::class -> findNote(id) as T?
+        Task::class -> findTask(id) as T?
+        Tag::class  -> findTag(id)  as T?
+        else -> null
+    }
 
   fun setRecovered(): State = this.copy(recovered = true)
 }

@@ -13,6 +13,7 @@ import io.sentry.Sentry
 import blog.config.Konfig
 import blog.model.loginRoute
 import blog.model.notesRoute
+import blog.model.tagRoute
 import blog.model.tasksRoute
 import blog.model.usersRoute
 import blog.module.authentication
@@ -51,6 +52,7 @@ object Main {
         tasksRoute(processor, reader, scheduler, kfg)
         notesRoute(processor, reader, scheduler, kfg)
         info(reader)
+        tagRoute(processor, reader, scheduler, kfg)
       }
     }.start(wait = true)
     Behaviors.same()
