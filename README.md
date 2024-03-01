@@ -3,7 +3,7 @@
 ## Status
 
 [![build](https://github.com/jvorhauer/konomas/actions/workflows/gradle.yml/badge.svg)](https://github.com/jvorhauer/noviblog/actions/workflows/gradle.yml)
-[![coverage](https://codecov.io/gh/jvorhauer/noviblog/branch/main/graph/badge.svg?token=Nn5OmNCOEY)](https://codecov.io/gh/jvorhauer/noviblog)
+[![coverage](https://codecov.io/gh/jvorhauer/konomas/branch/main/graph/badge.svg?token=Nn5OmNCOEY)](https://codecov.io/gh/jvorhauer/noviblog)
 
 An Event Sourced version of the backend for the FrontEnd solution.
 

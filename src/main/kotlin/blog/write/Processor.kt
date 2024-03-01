@@ -88,7 +88,7 @@ class Processor(pid: PersistenceId, private val reader: Reader) : EventSourcedBe
       Effect().none().thenReply(cmd.replyTo) { StatusReply.error("Note with id ${cmd.id} not found for user with id ${cmd.user}") }
     } else {
       cmd.toEvent.let {
-        Effect().persist(it).thenReply(cmd.replyTo) { st -> StatusReply.success(st.findNote(it.id)?.toResponse()) }
+        Effect().persist(it).thenReply(cmd.replyTo) { st -> StatusReply.success(st.findNote(it.id)?.toResponse) }
       }
     }
 

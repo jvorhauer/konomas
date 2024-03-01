@@ -37,6 +37,9 @@ repositories {
   maven {
     url = uri("https://oss.sonatype.org/content/repositories/releases")
   }
+  maven {
+    url = uri("https://jitpack.io")
+  }
 }
 
 dependencies {
@@ -91,8 +94,8 @@ tasks.withType<KotlinCompile> {
   kotlinOptions {
     freeCompilerArgs = listOf("-Xjsr305=strict")
     jvmTarget = "21"
-    languageVersion = "1.9"
-    allWarningsAsErrors = true
+    languageVersion = "2.0"
+    allWarningsAsErrors = false
   }
 }
 tasks.withType<JavaCompile> {

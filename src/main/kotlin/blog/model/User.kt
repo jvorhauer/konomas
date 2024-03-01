@@ -69,6 +69,7 @@ data class UserCreated(
   val email: String,
   val name: String,
   val password: String,
+  override val received: ZonedDateTime = znow
 ) : Event {
   val toEntity: User get() = User(id, email, name, password)
 }
@@ -76,10 +77,14 @@ data class UserCreated(
 data class UserUpdated(
   val id: String,
   val name: String?,
-  val password: String?
+  val password: String?,
+  override val received: ZonedDateTime = znow
 ): Event
 
-data class UserDeleted(val id: String) : Event
+data class UserDeleted(
+  val id: String,
+  override val received: ZonedDateTime = znow
+) : Event
 
 // Entitites
 
@@ -157,7 +162,7 @@ fun Route.usersRoute(processor: ActorRef<Command>, reader: Reader, scheduler: Sc
       }
       get("/notes") {
         val userId = userIdFromJWT(call) ?: return@get call.respond(Unauthorized, "Unauthorized")
-        call.respond(reader.findNotesForUser(userId).sortedBy { it.created }.map { it.toResponse() })
+        call.respond(reader.findNotesForUser(userId).sortedBy { it.created }.map { it.toResponse })
       }
       put {
         val userId = userIdFromJWT(call) ?: return@put call.respond(Unauthorized, "Unauthorized")

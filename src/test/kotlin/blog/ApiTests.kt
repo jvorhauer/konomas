@@ -163,6 +163,13 @@ class ApiTests {
       assertThat(response.status.value).isEqualTo(200)
       val ur = response.body<UserResponse>()
       assertThat(ur.name).isEqualTo("Anders")
+
+      response = client.get("http://localhost:8181/api/users/me") {
+        header("Authorization", "Bearer ${token.token}")
+      }
+      assertThat(response.status.value).isEqualTo(200)
+      val updatedUser: UserResponse = response.body<UserResponse>()
+      assertThat(updatedUser.name).isEqualTo("Anders")
     }
   }
 

@@ -35,6 +35,8 @@ class NoteTests {
     assertThat(nc.user).isEqualTo(userId)
     assertThat(nc.title).isEqualTo("title")
     assertThat(nc.body).isEqualTo("body")
+    assertThat(nc.received).isNotNull
+    assertThat(nc.received).isBefore(znow)
 
     val note = nc.toEntity
     assertThat(note.id).isNotNull()

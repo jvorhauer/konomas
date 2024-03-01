@@ -8,8 +8,8 @@ import blog.model.UserCreated
 import blog.model.nextId
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
-import java.time.LocalDateTime
 import blog.model.Task
+import blog.model.znow
 
 class ReaderTests {
 
@@ -47,7 +47,7 @@ class ReaderTests {
   fun `new task`() {
     val reader = Reader()
     val taskId = nextId
-    reader.processEvent(TaskCreated(taskId, userId, "title", "body", LocalDateTime.now().plusHours(4)))
+    reader.processEvent(TaskCreated(taskId, userId, "title", "body", znow.plusHours(4)))
     assertThat(reader.allTasks()).hasSize(1)
     assertThat(reader.findTasksForUser(userId)).hasSize(1)
     assertThat(reader.find<Task>(taskId)).isNotNull
@@ -63,7 +63,7 @@ class ReaderTests {
     assertThat(reader.allNotes()).hasSize(1)
     assertThat(reader.findNotesForUser(userId)).hasSize(1)
 
-    reader.processEvent(TaskCreated(nextId, userId, "title", "body", LocalDateTime.now().plusHours(4)))
+    reader.processEvent(TaskCreated(nextId, userId, "title", "body", znow.plusHours(4)))
     assertThat(reader.allTasks()).hasSize(1)
     assertThat(reader.findTasksForUser(userId)).hasSize(1)
   }

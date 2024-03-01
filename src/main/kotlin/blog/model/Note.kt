@@ -43,18 +43,31 @@ data class DeleteNote(val id: String, val rt: ActorRef<StatusReply<Done>>): Comm
   val toEvent get() = NoteDeleted(id)
 }
 
-data class NoteCreated(val id: String, val user: String, val title: String, val body: String) : Event {
+
+data class NoteCreated(
+  val id: String,
+  val user: String,
+  val title: String,
+  val body: String,
+  override val received: ZonedDateTime = znow
+) : Event {
   val toEntity get() = Note(id, user, title, title.slug, body)
-  val toResponse get() = this.toEntity.toResponse()
+  val toResponse get() = this.toEntity.toResponse
 }
 
-data class NoteUpdated(val id: String, val user: String, val title: String?, val body: String?): Event {
-  val timestamp: ZonedDateTime get() = TSID.from(id).instant.atZone(CET)
-}
+data class NoteUpdated(
+  val id: String,
+  val user: String,
+  val title: String?,
+  val body: String?,
+  override val received: ZonedDateTime = znow
+): Event
 
-data class NoteDeleted(val id: String): Event
+data class NoteDeleted(
+  val id: String,
+  override val received: ZonedDateTime = znow
+): Event
 
-data class NoteDelta(val updated: ZonedDateTime, val what: String)
 
 data class Note(
   override val id: String,
@@ -63,18 +76,18 @@ data class Note(
   val slug: String,
   val body: String,
   val created: ZonedDateTime = TSID.from(id).instant.atZone(CET),
-  val updated: ZonedDateTime = znow,
-  val events: List<NoteUpdated> = listOf()
+  val updated: ZonedDateTime = znow
 ): Entity {
   constructor(id: String, user: String, title: String, body: String): this(id, user, title, title.slug, body)
   fun update(nu: NoteUpdated): Note = this.copy(
-    title = nu.title ?: this.title, slug = nu.title?.slug ?: this.slug, body = nu.body ?: this.body, updated = znow, events = this.events + nu
+    title = nu.title ?: this.title, slug = nu.title?.slug ?: this.slug, body = nu.body ?: this.body, updated = nu.received
   )
-  fun toResponse() = NoteResponse(id, user, DTF.format(created), DTF.format(updated), title, slug, body, events.map { NoteDelta(it.timestamp, "???") })
+  val toResponse get() = NoteResponse(id, user, created.fmt, updated.fmt, title, slug, body)
 
   override fun equals(other: Any?): Boolean = equals(this, other)
   override fun hashCode(): Int = id.hashCode()
 }
+
 
 data class NoteResponse(
   val id: String,
@@ -84,7 +97,6 @@ data class NoteResponse(
   val title: String,
   val slug: String,
   val body: String,
-  val deltas: List<NoteDelta>
 )
 
 fun Route.notesRoute(processor: ActorRef<Command>, reader: Reader, scheduler: Scheduler, kfg: Konfig) =
@@ -105,12 +117,12 @@ fun Route.notesRoute(processor: ActorRef<Command>, reader: Reader, scheduler: Sc
       get {
         val rows = call.request.queryParameters["rows"]?.toInt() ?: 10
         val start = call.request.queryParameters["start"]?.toInt() ?: 0
-        call.respond(reader.allNotes(rows, start).map { it.toResponse() })
+        call.respond(reader.allNotes(rows, start).map { it.toResponse })
       }
       get("{id?}") {
         val id = call.parameters["id"] ?: return@get call.respond(HttpStatusCode.NotFound, "note id not specified")
         val note = reader.findNote(id) ?: return@get call.respond(HttpStatusCode.NotFound, "note not found for $id")
-        call.respond(note.toResponse())
+        call.respond(note.toResponse)
       }
       put {
         val unr = call.receive<UpdateNoteRequest>()

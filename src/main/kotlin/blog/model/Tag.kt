@@ -1,5 +1,6 @@
 package blog.model
 
+import java.time.ZonedDateTime
 import akka.actor.typed.ActorRef
 import akka.actor.typed.Scheduler
 import akka.actor.typed.javadsl.AskPattern.ask
@@ -30,7 +31,11 @@ data class CreateTag(val id: String, val label: String, val replyTo: ActorRef<St
   val toEvent get() = TagCreated(id, label)
 }
 
-data class TagCreated(val id: String, val label: String) : Event {
+data class TagCreated(
+  val id: String,
+  val label: String,
+  override val received: ZonedDateTime = znow
+) : Event {
   val toEntity get() = Tag(id, label)
 }
 

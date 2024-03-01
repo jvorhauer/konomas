@@ -28,11 +28,11 @@ data class Task(
   val title: String,
   val slug: String,
   val body: String,
-  val due: LocalDateTime,
+  val due: ZonedDateTime,
   val status: TaskStatus = TaskStatus.TODO,
   val private: Boolean = true,
   val created: ZonedDateTime = TSID.from(id).instant.atZone(CET),
-  val updated: ZonedDateTime = znow
+  val updated: ZonedDateTime = TSID.from(id).instant.atZone(CET)
 ) : Entity {
   fun update(tu: TaskUpdated): Task = this.copy(
     title = tu.title ?: this.title,
@@ -40,7 +40,7 @@ data class Task(
     body = tu.body ?: this.body,
     due = tu.due ?: this.due,
     status = tu.status ?: this.status,
-    updated = znow
+    updated = tu.received
   )
 
   val toResponse get() = TaskResponse(id, created.fmt, updated.fmt, user, title, body, due.fmt, status.name)
@@ -49,11 +49,11 @@ data class Task(
 }
 
 data class CreateTaskRequest(val title: String, val body: String, val due: LocalDateTime): Request {
-  fun toCommand(user: String, replyTo: ActorRef<StatusReply<TaskResponse>>) = CreateTask(user, title.encode, body.encode, due, replyTo)
+  fun toCommand(user: String, replyTo: ActorRef<StatusReply<TaskResponse>>) = CreateTask(user, title.encode, body.encode, due.atZone(CET), replyTo)
 }
 
 data class UpdateTaskRequest(val id: String, val title: String?, val body: String?, val due: LocalDateTime?, val status: TaskStatus?): Request {
-  fun toCommand(user: String, replyTo: ActorRef<StatusReply<TaskResponse>>) = UpdateTask(user, id, title.mencode, body.mencode, due, status, replyTo)
+  fun toCommand(user: String, replyTo: ActorRef<StatusReply<TaskResponse>>) = UpdateTask(user, id, title.mencode, body.mencode, due?.atZone(CET), status, replyTo)
 }
 
 
@@ -61,7 +61,7 @@ data class CreateTask(
   val user: String,
   val title: String,
   val body: String,
-  val due: LocalDateTime,
+  val due: ZonedDateTime,
   val replyTo: ActorRef<StatusReply<TaskResponse>>,
   val id: String = nextId
 ) : Command {
@@ -73,7 +73,7 @@ data class UpdateTask(
   val id: String,
   val title: String?,
   val body: String?,
-  val due: LocalDateTime?,
+  val due: ZonedDateTime?,
   val status: TaskStatus?,
   val replyTo: ActorRef<StatusReply<TaskResponse>>
 ) : Command {
@@ -90,7 +90,8 @@ data class TaskCreated(
   val user: String,
   val title: String,
   val body: String,
-  val due: LocalDateTime
+  val due: ZonedDateTime,
+  override val received: ZonedDateTime = znow
 ) : Event {
   val toEntity get() = Task(id, user, title, title.slug, body, due)
   val toResponse get() = toEntity.toResponse
@@ -101,11 +102,15 @@ data class TaskUpdated(
   val id: String,
   val title: String?,
   val body: String?,
-  val due: LocalDateTime?,
+  val due: ZonedDateTime?,
   val status: TaskStatus?,
+  override val received: ZonedDateTime = znow
 ) : Event
 
-data class TaskDeleted(val id: String): Event
+data class TaskDeleted(
+  val id: String,
+  override val received: ZonedDateTime = znow
+): Event
 
 
 data class TaskResponse(

@@ -73,6 +73,7 @@ class Reader(
       is TagCreated  -> tags[e.id] = e.toEntity
       else -> logger.warn("could not processEvent {}", e)
     }
+    logger.info("processEvent: $e")
   }
 
   companion object {

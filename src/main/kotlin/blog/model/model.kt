@@ -16,21 +16,35 @@ import io.hypersistence.tsid.TSID
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
 import io.ktor.server.auth.jwt.*
+import blog.model.Constants.idNode
+import blog.model.Constants.mdi
+import blog.model.Constants.randm
 
 interface Request : Serializable
+
 interface Command : Serializable
-interface Event   : Serializable
+
+interface Event   : Serializable {
+  val received: ZonedDateTime
+}
+
 interface Entity  : Serializable {
   val id: String
 }
+
 interface Response : Serializable {
   val id: String
 }
 
+object Constants {
+  val randm: SecureRandom = SecureRandom.getInstance("SHA1PRNG", "SUN")
+  val idNode: Int = InetAddress.getLocalHost().address[3].toInt()and(0xFF)
+  val mdi: MessageDigest = MessageDigest.getInstance("SHA-256")
+}
+
 object Hasher {
-  private val md = MessageDigest.getInstance("SHA-256")
   private fun toHex(ba: ByteArray) = ba.joinToString(separator = "") { String.format(Locale.US, "%02x", it) }
-  fun hash(s: String): String = toHex(md.digest(s.toByteArray(StandardCharsets.UTF_8)))
+  fun hash(s: String): String = toHex(mdi.digest(s.toByteArray(StandardCharsets.UTF_8)))
 }
 val String.hashed: String get() = Hasher.hash(this)
 val String.gravatar: String get() = this.trim().lowercase().hashed
@@ -44,10 +58,7 @@ val inow: Instant get() = Instant.now()
 val znow: ZonedDateTime get() = inow.atZone(CET)
 val now: LocalDateTime get() = LocalDateTime.ofInstant(inow, CET)
 
-private val idFactory = TSID.Factory.builder()
-  .withRandom(SecureRandom.getInstance("SHA1PRNG", "SUN"))
-  .withNodeBits(8)
-  .withNode(InetAddress.getLocalHost().address[3].toInt()and(0xFF)).build()
+private val idFactory = TSID.Factory.builder().withRandom(randm).withNodeBits(8).withNode(idNode).build()
 val nextTSID: TSID get() = idFactory.generate()
 val nextId: String get() = nextTSID.toString()
 

@@ -51,6 +51,8 @@ class UserTests {
     assertThat(u.name).isEqualTo(uc.name)
     assertThat(u.password).isEqualTo(uc.password)
     assertThat(u.gravatar).isEqualTo("6c8e85364ba2cae4fc908189bee6fa566f148957c42dd778c1cd6e0af03cb0aa")
+    assertThat(u.hashCode()).isEqualTo(uc.id.hashCode())
+    assertThat(u.joined).isBeforeOrEqualTo(znow)
   }
 
   @Test

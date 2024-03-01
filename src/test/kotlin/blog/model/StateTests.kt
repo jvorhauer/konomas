@@ -2,7 +2,6 @@ package blog.model
 
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
-import java.time.LocalDateTime
 
 class StateTests {
 
@@ -75,7 +74,7 @@ class StateTests {
     val state = State()
     val user = User(nextId, "test@tester.nl", "Tester", pw)
     val state2 = state.save(user)
-    val task = Task(nextId, user.id, "Test", "test", "Tasking, 1.. 2..", LocalDateTime.now().plusHours(1))
+    val task = Task(nextId, user.id, "Test", "test", "Tasking, 1.. 2..", znow.plusHours(1))
     val state3 = state2.save(task)
     assertThat(state3.taskCount()).isEqualTo(1)
     assertThat(state3.findTask(task.id)).isNotNull

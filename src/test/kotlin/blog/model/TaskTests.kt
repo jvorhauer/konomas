@@ -5,6 +5,7 @@ import akka.pattern.StatusReply
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import java.time.LocalDateTime
+import java.time.ZonedDateTime
 import java.util.UUID
 import io.hypersistence.tsid.TSID
 
@@ -26,21 +27,21 @@ class TaskTests {
     assertThat(ct.id).isNotNull
     assertThat(ct.title).isEqualTo("title").isEqualTo(ctr.title)
     assertThat(ct.body).isEqualTo("body").isEqualTo(ctr.body)
-    assertThat(ct.due).isAfter(LocalDateTime.now()).isEqualTo(ctr.due)
+    assertThat(ct.due).isAfter(znow).isEqualTo(ctr.due.atZone(CET))
     assertThat(ct.user).isEqualTo(userId)
 
     val tc = ct.toEvent
     assertThat(tc.id).isEqualTo(ct.id)
     assertThat(tc.title).isEqualTo("title").isEqualTo(ct.title).isEqualTo(ctr.title)
     assertThat(tc.body).isEqualTo("body").isEqualTo(ct.body).isEqualTo(ctr.body)
-    assertThat(tc.due).isEqualTo(ct.due).isEqualTo(ctr.due).isAfter(LocalDateTime.now())
+    assertThat(tc.due).isEqualTo(ct.due).isEqualTo(ctr.due.atZone(CET)).isAfter(znow)
     assertThat(tc.user).isEqualTo(userId).isEqualTo(ct.user)
 
     val task = tc.toEntity
     assertThat(task.id).isEqualTo(tc.id)
     assertThat(task.title).isEqualTo("title").isEqualTo(tc.title).isEqualTo(ct.title).isEqualTo(ctr.title)
     assertThat(task.body).isEqualTo("body").isEqualTo(tc.body).isEqualTo(ct.body).isEqualTo(ctr.body)
-    assertThat(task.due).isEqualTo(tc.due).isEqualTo(ct.due).isEqualTo(ctr.due).isAfter(LocalDateTime.now())
+    assertThat(task.due).isEqualTo(tc.due).isEqualTo(ct.due).isEqualTo(ctr.due.atZone(CET)).isAfter(znow)
     assertThat(task.user).isEqualTo(userId).isEqualTo(tc.user).isEqualTo(ct.user)
 
     val res = task.toResponse
@@ -60,10 +61,10 @@ class TaskTests {
     assertThat(ut.user).isEqualTo(userId)
     assertThat(ut.title).isEqualTo("new title")
     assertThat(ut.body).isEqualTo("new body")
-    assertThat(ut.due).isEqualTo(utr.due).isAfter(LocalDateTime.now())
+    assertThat(ut.due).isEqualTo(utr.due?.atZone(CET)).isAfter(znow)
     assertThat(ut.status).isEqualTo(TaskStatus.DOING)
 
-    val task = Task(taskId, userId, "title", "title".slug, "body", now.plusDays(1), TaskStatus.REVIEW)
+    val task = Task(taskId, userId, "title", "title".slug, "body", znow.plusDays(1), TaskStatus.REVIEW)
     var updated = task.update(ut.toEvent)
     assertThat(updated.title).isEqualTo("new title")
     assertThat(updated.body).isEqualTo("new body")
@@ -80,7 +81,7 @@ class TaskTests {
     assertThat(updated.due).isEqualTo(task.due)
     assertThat(updated.status).isEqualTo(task.status)
 
-    val due = LocalDateTime.now().plusHours(1)
+    val due = znow.plusHours(1)
     updated = task.update(TaskUpdated(userId, taskId, null, null, due, null))
     assertThat(updated.body).isEqualTo(task.body)
     assertThat(updated.title).isEqualTo(task.title)
@@ -98,5 +99,20 @@ class TaskTests {
     assertThat(updated.title).isEqualTo(task.title)
     assertThat(updated.due).isEqualTo(task.due)
     assertThat(updated.status).isEqualTo(task.status)
+  }
+
+  @Test
+  fun zonedDateTimeParsing() {
+    var zonedDateTime: ZonedDateTime = ZonedDateTime.parse("2022-11-03T17:35:00Z")
+    assertThat(zonedDateTime).isNotNull
+    assertThat(zonedDateTime.year).isEqualTo(2022)
+    assertThat(zonedDateTime.hour).isEqualTo(17)
+
+    val localDateTime = LocalDateTime.parse("2023-10-02T16:24:11")
+    assertThat(localDateTime).isNotNull
+    zonedDateTime = localDateTime.atZone(CET)
+    assertThat(zonedDateTime).isNotNull
+    assertThat(zonedDateTime.dayOfMonth).isEqualTo(2)
+    assertThat(zonedDateTime.hour).isEqualTo(16)
   }
 }
