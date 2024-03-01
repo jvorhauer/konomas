@@ -7,7 +7,7 @@ plugins {
   jacoco
   idea
   kotlin("jvm") version "1.9.22"
-  id("com.google.cloud.tools.jib") version "3.4.0"
+  id("com.google.cloud.tools.jib") version "3.4.1"
   id("net.researchgate.release") version "3.0.2"
   id("com.github.ben-manes.versions") version "0.51.0"
   id("io.ktor.plugin") version "2.3.8"
